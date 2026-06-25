@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Investment Research Dashboard</title>
+    <style>
+        :root {
+            --bg: #0f1117;
+            --card: #1a1d2e;
+            --border: #2a2d3e;
+            --text: #e1e4ea;
+            --muted: #8b8fa3;
+            --accent: #6366f1;
+            --green: #22c55e;
+            --red: #ef4444;
+            --yellow: #eab308;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        header {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h1 { font-size: 1.25rem; font-weight: 600; }
+        header .meta { color: var(--muted); font-size: 0.8rem; }
+
+        .disclaimer {
+            background: #1e1b2e;
+            border-left: 3px solid var(--accent);
+            padding: 0.75rem 1rem;
+            margin: 1rem 2rem 0;
+            font-size: 0.75rem;
+            color: var(--muted);
+            border-radius: 0 6px 6px 0;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 1.25rem;
+            padding: 1.25rem 2rem 2rem;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1.25rem;
+        }
+
+        .card h2 {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--muted);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card.wide { grid-column: span 2; }
+        .card.full { grid-column: 1 / -1; }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        th { text-align: left; color: var(--muted); font-weight: 500; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); font-size: 0.75rem; text-transform: uppercase; }
+        td { padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border); }
+        tr:last-child td { border-bottom: none; }
+        tr:hover { background: rgba(99, 102, 241, 0.05); }
+
+        .pos { color: var(--green); }
+        .neg { color: var(--red); }
+        .neutral { color: var(--yellow); }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 0.75rem;
+        }
+
+        .metric {
+            background: rgba(255,255,255,0.03);
+            padding: 0.75rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .metric .label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; margin-bottom: 0.25rem; }
+        .metric .value { font-size: 1.35rem; font-weight: 700; }
+        .metric .sub { font-size: 0.7rem; color: var(--muted); margin-top: 0.15rem; }
+
+        .tag {
+            display: inline-block;
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .tag.bullish { background: rgba(34,197,94,0.15); color: var(--green); }
+        .tag.bearish { background: rgba(239,68,68,0.15); color: var(--red); }
+        .tag.neutral-tag { background: rgba(234,179,8,0.15); color: var(--yellow); }
+
+        .news-item {
+            padding: 0.6rem 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.85rem;
+        }
+        .news-item:last-child { border-bottom: none; }
+        .news-item .source { color: var(--muted); font-size: 0.7rem; }
+        .news-item .headline { margin-top: 0.15rem; }
+
+        .bar-chart { display: flex; flex-direction: column; gap: 0.5rem; }
+        .bar-row { display: flex; align-items: center; gap: 0.75rem; font-size: 0.8rem; }
+        .bar-label { width: 80px; text-align: right; color: var(--muted); flex-shrink: 0; }
+        .bar-track { flex: 1; height: 22px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; position: relative; }
+        .bar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 0.7rem; font-weight: 600; transition: width 0.6s ease; }
+        .bar-value { width: 55px; text-align: right; font-weight: 600; flex-shrink: 0; }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: var(--muted);
+        }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 0.5rem;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .refresh-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 0.4rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+        .refresh-btn:hover { opacity: 0.9; }
+        .refresh-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .tab-bar { display: flex; gap: 0.25rem; margin-bottom: 1rem; }
+        .tab {
+            padding: 0.35rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            color: var(--muted);
+            background: transparent;
+            border: none;
+            font-weight: 500;
+        }
+        .tab.active { background: var(--accent); color: white; }
+
+        .scenario-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; }
+        .scenario {
+            padding: 0.75rem;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+        }
+        .scenario h4 { font-size: 0.8rem; margin-bottom: 0.35rem; }
+        .scenario p { font-size: 0.75rem; color: var(--muted); line-height: 1.4; }
+        .scenario .prob { font-size: 0.7rem; font-weight: 600; margin-top: 0.35rem; }
+
+        .search-box {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.5rem 0.75rem;
+            color: var(--text);
+            font-size: 0.85rem;
+            width: 220px;
+        }
+        .search-box::placeholder { color: var(--muted); }
+        .search-box:focus { outline: none; border-color: var(--accent); }
+
+        @media (max-width: 768px) {
+            .dashboard { grid-template-columns: 1fr; padding: 1rem; }
+            .card.wide, .card.full { grid-column: span 1; }
+            .scenario-grid { grid-template-columns: 1fr; }
+            header { flex-direction: column; gap: 0.5rem; align-items: flex-start; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div>
+        <h1>Investment Research Dashboard</h1>
+        <div class="meta">Analytischer Research-Partner | Keine Anlageberatung</div>
+    </div>
+    <div style="display:flex;gap:0.75rem;align-items:center">
+        <input type="text" class="search-box" id="symbolSearch" placeholder="Symbol suchen (z.B. AAPL)">
+        <button class="refresh-btn" id="refreshBtn" onclick="loadAllData()">Aktualisieren</button>
+        <div class="meta" id="lastUpdate"></div>
+    </div>
+</header>
+
+<div class="disclaimer">
+    Hinweis: Dieses Dashboard dient ausschließlich der eigenständigen Informationsbeschaffung und Analyse. Es handelt sich nicht um Anlageberatung oder Kauf-/Verkaufsempfehlungen. Alle Daten werden per API abgerufen und können verzögert sein. Quellen und Datenstand werden angegeben.
+</div>
+
+<div class="dashboard">
+
+    <!-- Makroökonomische Kennzahlen -->
+    <div class="card wide" id="macroCard">
+        <h2>Makroökonomische Indikatoren</h2>
+        <div class="metric-grid" id="macroMetrics">
+            <div class="loading"><div class="spinner"></div>Laden...</div>
+        </div>
+    </div>
+
+    <!-- Marktindizes -->
+    <div class="card" id="indicesCard">
+        <h2>Marktindizes</h2>
+        <div id="indicesTable">
+            <div class="loading"><div class="spinner"></div>Laden...</div>
+        </div>
+    </div>
+
+    <!-- Asset-Klassen Vergleich -->
+    <div class="card" id="assetCard">
+        <h2>Anlageklassen-Vergleich (YTD)</h2>
+        <div id="assetChart">
+            <div class="loading"><div class="spinner"></div>Laden...</div>
+        </div>
+    </div>
+
+    <!-- Top Aktien nach Momentum -->
+    <div class="card wide" id="stocksCard">
+        <h2>Aktien-Screening</h2>
+        <div class="tab-bar" id="stockTabs">
+            <button class="tab active" data-tab="momentum">Momentum</button>
+            <button class="tab" data-tab="value">Value</button>
+            <button class="tab" data-tab="dividende">Dividende</button>
+        </div>
+        <div id="stocksTable">
+            <div class="loading"><div class="spinner"></div>Laden...</div>
+        </div>
+    </div>
+
+    <!-- Sektorperformance -->
+    <div class="card" id="sectorCard">
+        <h2>Sektorperformance</h2>
+        <div id="sectorChart">
+            <div class="loading"><div class="spinner"></div>Laden...</div>
+        </div>
+    </div>
+
+    <!-- Markt-Sentiment -->
+    <div class="card" id="sentimentCard">
+        <h2>Markt-Sentiment</h2>
+        <div id="sentimentContent">
+            <div class="loading"><div class="spinner"></div>Laden...</div>
+        </div>
+    </div>
+
+    <!-- Nachrichten -->
+    <div class="card wide" id="newsCard">
+        <h2>Aktuelle Markt-Nachrichten</h2>
+        <div id="newsContent">
+            <div class="loading"><div class="spinner"></div>Laden...</div>
+        </div>
+    </div>
+
+    <!-- Szenarien -->
+    <div class="card full" id="scenarioCard">
+        <h2>Marktszenarien-Analyse</h2>
+        <div class="scenario-grid" id="scenarioContent">
+            <div class="loading"><div class="spinner"></div>Laden...</div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+const API_BASE = 'https://query1.finance.yahoo.com/v8/finance';
+const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+
+function $(id) { return document.getElementById(id); }
+function fmt(n, d=2) { return n != null ? Number(n).toFixed(d) : '–'; }
+function pctClass(v) { return v > 0 ? 'pos' : v < 0 ? 'neg' : ''; }
+function pctFmt(v) { return v != null ? (v > 0 ? '+' : '') + fmt(v) + '%' : '–'; }
+
+const INDICES = [
+    { symbol: '^GSPC', name: 'S&P 500' },
+    { symbol: '^DJI', name: 'Dow Jones' },
+    { symbol: '^IXIC', name: 'NASDAQ' },
+    { symbol: '^GDAXI', name: 'DAX 40' },
+    { symbol: '^STOXX50E', name: 'Euro Stoxx 50' },
+    { symbol: '^N225', name: 'Nikkei 225' },
+    { symbol: '^FTSE', name: 'FTSE 100' },
+];
+
+const ASSETS = [
+    { symbol: 'SPY', name: 'US Aktien (S&P 500)', color: '#6366f1' },
+    { symbol: 'AGG', name: 'US Anleihen Agg.', color: '#22c55e' },
+    { symbol: 'GLD', name: 'Gold', color: '#eab308' },
+    { symbol: 'USO', name: 'Öl (WTI)', color: '#ef4444' },
+    { symbol: 'VGK', name: 'Europa Aktien', color: '#06b6d4' },
+    { symbol: 'EEM', name: 'Emerging Markets', color: '#f97316' },
+    { symbol: 'BTC-USD', name: 'Bitcoin', color: '#a855f7' },
+];
+
+const SECTORS = [
+    { symbol: 'XLK', name: 'Technologie' },
+    { symbol: 'XLV', name: 'Gesundheit' },
+    { symbol: 'XLF', name: 'Finanzen' },
+    { symbol: 'XLE', name: 'Energie' },
+    { symbol: 'XLY', name: 'Konsum (zyklisch)' },
+    { symbol: 'XLP', name: 'Konsum (defensiv)' },
+    { symbol: 'XLI', name: 'Industrie' },
+    { symbol: 'XLU', name: 'Versorger' },
+    { symbol: 'XLRE', name: 'Immobilien' },
+    { symbol: 'XLC', name: 'Kommunikation' },
+    { symbol: 'XLB', name: 'Grundstoffe' },
+];
+
+const SCREEN_MOMENTUM = ['NVDA', 'AVGO', 'META', 'AMZN', 'MSFT', 'AAPL', 'GOOGL', 'TSLA', 'LLY', 'JPM'];
+const SCREEN_VALUE = ['BRK-B', 'JNJ', 'PFE', 'CVX', 'INTC', 'BMY', 'VZ', 'CMCSA', 'GM', 'F'];
+const SCREEN_DIV = ['O', 'VZ', 'T', 'MO', 'PM', 'KO', 'PEP', 'XOM', 'ABBV', 'PFE'];
+
+async function fetchQuotes(symbols) {
+    const syms = symbols.join(',');
+    const url = `${CORS_PROXY}${encodeURIComponent(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${syms}`)}`;
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
+        return data.quoteResponse?.result || [];
+    } catch (e) {
+        console.error('Fetch error:', e);
+        return [];
+    }
+}
+
+async function loadIndices() {
+    const quotes = await fetchQuotes(INDICES.map(i => i.symbol));
+    if (!quotes.length) {
+        $('indicesTable').innerHTML = '<div style="color:var(--muted);font-size:0.85rem">Daten nicht verfügbar. Yahoo Finance API möglicherweise blockiert.</div>';
+        renderDemoIndices();
+        return;
+    }
+    const map = Object.fromEntries(quotes.map(q => [q.symbol, q]));
+    let html = '<table><thead><tr><th>Index</th><th>Kurs</th><th>Veränderung</th><th>% Tag</th></tr></thead><tbody>';
+    for (const idx of INDICES) {
+        const q = map[idx.symbol];
+        if (!q) continue;
+        const pct = q.regularMarketChangePercent;
+        html += `<tr>
+            <td><strong>${idx.name}</strong></td>
+            <td>${fmt(q.regularMarketPrice)}</td>
+            <td class="${pctClass(q.regularMarketChange)}">${fmt(q.regularMarketChange)}</td>
+            <td class="${pctClass(pct)}">${pctFmt(pct)}</td>
+        </tr>`;
+    }
+    html += '</tbody></table>';
+    $('indicesTable').innerHTML = html;
+}
+
+function renderDemoIndices() {
+    const demo = [
+        { name: 'S&P 500', price: '5,520.12', chg: '+18.34', pct: '+0.33%', cls: 'pos' },
+        { name: 'Dow Jones', price: '42,180.55', chg: '-45.20', pct: '-0.11%', cls: 'neg' },
+        { name: 'NASDAQ', price: '17,890.44', chg: '+92.10', pct: '+0.52%', cls: 'pos' },
+        { name: 'DAX 40', price: '19,245.80', chg: '+124.60', pct: '+0.65%', cls: 'pos' },
+        { name: 'Euro Stoxx 50', price: '5,012.30', chg: '+22.15', pct: '+0.44%', cls: 'pos' },
+        { name: 'Nikkei 225', price: '39,420.10', chg: '-180.50', pct: '-0.46%', cls: 'neg' },
+        { name: 'FTSE 100', price: '8,340.20', chg: '+12.80', pct: '+0.15%', cls: 'pos' },
+    ];
+    let html = '<table><thead><tr><th>Index</th><th>Kurs</th><th>Veränderung</th><th>% Tag</th></tr></thead><tbody>';
+    for (const d of demo) {
+        html += `<tr><td><strong>${d.name}</strong></td><td>${d.price}</td><td class="${d.cls}">${d.chg}</td><td class="${d.cls}">${d.pct}</td></tr>`;
+    }
+    html += '</tbody></table><div style="color:var(--muted);font-size:0.7rem;margin-top:0.5rem">Demo-Daten – Live-API nicht erreichbar</div>';
+    $('indicesTable').innerHTML = html;
+}
+
+async function loadAssets() {
+    const quotes = await fetchQuotes(ASSETS.map(a => a.symbol));
+    const container = $('assetChart');
+    if (!quotes.length) {
+        renderDemoAssets();
+        return;
+    }
+    const map = Object.fromEntries(quotes.map(q => [q.symbol, q]));
+    let html = '<div class="bar-chart">';
+    for (const asset of ASSETS) {
+        const q = map[asset.symbol];
+        const ytd = q?.ytdReturn || q?.regularMarketChangePercent || 0;
+        const width = Math.min(Math.abs(ytd) * 3, 100);
+        const color = ytd >= 0 ? 'var(--green)' : 'var(--red)';
+        html += `<div class="bar-row">
+            <div class="bar-label">${asset.name}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${width}%;background:${asset.color}"></div></div>
+            <div class="bar-value ${pctClass(ytd)}">${pctFmt(ytd)}</div>
+        </div>`;
+    }
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function renderDemoAssets() {
+    const demo = [
+        { name: 'US Aktien', pct: 14.2, color: '#6366f1' },
+        { name: 'US Anleihen', pct: 2.1, color: '#22c55e' },
+        { name: 'Gold', pct: 26.8, color: '#eab308' },
+        { name: 'Öl (WTI)', pct: -8.3, color: '#ef4444' },
+        { name: 'Europa Aktien', pct: 9.5, color: '#06b6d4' },
+        { name: 'Emerging Mkts', pct: 5.7, color: '#f97316' },
+        { name: 'Bitcoin', pct: 48.2, color: '#a855f7' },
+    ];
+    let html = '<div class="bar-chart">';
+    for (const d of demo) {
+        const w = Math.min(Math.abs(d.pct) * 2, 100);
+        html += `<div class="bar-row">
+            <div class="bar-label">${d.name}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${w}%;background:${d.color}"></div></div>
+            <div class="bar-value ${pctClass(d.pct)}">${pctFmt(d.pct)}</div>
+        </div>`;
+    }
+    html += '</div><div style="color:var(--muted);font-size:0.7rem;margin-top:0.5rem">Demo-Daten – Live-API nicht erreichbar</div>';
+    $('assetChart').innerHTML = html;
+}
+
+async function loadSectors() {
+    const quotes = await fetchQuotes(SECTORS.map(s => s.symbol));
+    const container = $('sectorChart');
+    if (!quotes.length) { renderDemoSectors(); return; }
+    const map = Object.fromEntries(quotes.map(q => [q.symbol, q]));
+    const sorted = [...SECTORS].sort((a, b) => {
+        const pa = map[a.symbol]?.regularMarketChangePercent || 0;
+        const pb = map[b.symbol]?.regularMarketChangePercent || 0;
+        return pb - pa;
+    });
+    let html = '<div class="bar-chart">';
+    for (const s of sorted) {
+        const q = map[s.symbol];
+        const pct = q?.regularMarketChangePercent || 0;
+        const w = Math.min(Math.abs(pct) * 20, 100);
+        const color = pct >= 0 ? 'var(--green)' : 'var(--red)';
+        html += `<div class="bar-row">
+            <div class="bar-label">${s.name}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${w}%;background:${color}"></div></div>
+            <div class="bar-value ${pctClass(pct)}">${pctFmt(pct)}</div>
+        </div>`;
+    }
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function renderDemoSectors() {
+    const demo = [
+        { name: 'Technologie', pct: 1.2 }, { name: 'Kommunikation', pct: 0.9 },
+        { name: 'Konsum (zykl.)', pct: 0.6 }, { name: 'Gesundheit', pct: 0.4 },
+        { name: 'Industrie', pct: 0.3 }, { name: 'Finanzen', pct: 0.1 },
+        { name: 'Grundstoffe', pct: -0.1 }, { name: 'Konsum (def.)', pct: -0.2 },
+        { name: 'Immobilien', pct: -0.4 }, { name: 'Versorger', pct: -0.5 },
+        { name: 'Energie', pct: -0.8 },
+    ];
+    let html = '<div class="bar-chart">';
+    for (const d of demo) {
+        const w = Math.min(Math.abs(d.pct) * 50, 100);
+        const color = d.pct >= 0 ? 'var(--green)' : 'var(--red)';
+        html += `<div class="bar-row"><div class="bar-label">${d.name}</div><div class="bar-track"><div class="bar-fill" style="width:${w}%;background:${color}"></div></div><div class="bar-value ${pctClass(d.pct)}">${pctFmt(d.pct)}</div></div>`;
+    }
+    html += '</div><div style="color:var(--muted);font-size:0.7rem;margin-top:0.5rem">Demo-Daten – Live-API nicht erreichbar</div>';
+    $('sectorChart').innerHTML = html;
+}
+
+async function loadStocks(type = 'momentum') {
+    const symbols = type === 'momentum' ? SCREEN_MOMENTUM : type === 'value' ? SCREEN_VALUE : SCREEN_DIV;
+    const quotes = await fetchQuotes(symbols);
+    if (!quotes.length) { renderDemoStocks(); return; }
+    let html = '<table><thead><tr><th>Symbol</th><th>Name</th><th>Kurs</th><th>% Tag</th><th>KGV</th><th>Marktk. (Mrd)</th><th>52W Hoch</th><th>52W Tief</th><th>Signal</th></tr></thead><tbody>';
+    for (const q of quotes) {
+        const pct = q.regularMarketChangePercent;
+        const pe = q.trailingPE;
+        const mcap = q.marketCap ? (q.marketCap / 1e9).toFixed(0) : '–';
+        const near52h = q.fiftyTwoWeekHigh ? (q.regularMarketPrice / q.fiftyTwoWeekHigh * 100).toFixed(0) : null;
+        let signal = 'neutral-tag', signalText = 'Neutral';
+        if (near52h && near52h > 95) { signal = 'bullish'; signalText = 'Nahe 52W-Hoch'; }
+        else if (near52h && near52h < 75) { signal = 'bearish'; signalText = 'Unter Druck'; }
+        else if (pct > 1) { signal = 'bullish'; signalText = 'Momentum'; }
+        html += `<tr>
+            <td><strong>${q.symbol}</strong></td>
+            <td>${q.shortName || q.longName || '–'}</td>
+            <td>${fmt(q.regularMarketPrice)}</td>
+            <td class="${pctClass(pct)}">${pctFmt(pct)}</td>
+            <td>${pe ? fmt(pe, 1) : '–'}</td>
+            <td>${mcap}</td>
+            <td>${fmt(q.fiftyTwoWeekHigh)}</td>
+            <td>${fmt(q.fiftyTwoWeekLow)}</td>
+            <td><span class="tag ${signal}">${signalText}</span></td>
+        </tr>`;
+    }
+    html += '</tbody></table>';
+    $('stocksTable').innerHTML = html;
+}
+
+function renderDemoStocks() {
+    const demo = [
+        { sym: 'NVDA', name: 'NVIDIA Corp', price: '142.50', pct: 2.8, pe: '68.2', mcap: '3,520', sig: 'bullish', sigT: 'Momentum' },
+        { sym: 'AVGO', name: 'Broadcom Inc', price: '185.20', pct: 1.5, pe: '38.4', mcap: '860', sig: 'bullish', sigT: 'Nahe 52W-Hoch' },
+        { sym: 'META', name: 'Meta Platforms', price: '520.30', pct: 0.9, pe: '25.1', mcap: '1,320', sig: 'bullish', sigT: 'Momentum' },
+        { sym: 'AMZN', name: 'Amazon.com', price: '198.40', pct: 0.4, pe: '42.8', mcap: '2,050', sig: 'neutral-tag', sigT: 'Neutral' },
+        { sym: 'MSFT', name: 'Microsoft', price: '445.80', pct: -0.2, pe: '35.6', mcap: '3,310', sig: 'neutral-tag', sigT: 'Neutral' },
+    ];
+    let html = '<table><thead><tr><th>Symbol</th><th>Name</th><th>Kurs</th><th>% Tag</th><th>KGV</th><th>Marktk. (Mrd)</th><th>Signal</th></tr></thead><tbody>';
+    for (const d of demo) {
+        html += `<tr><td><strong>${d.sym}</strong></td><td>${d.name}</td><td>${d.price}</td><td class="${pctClass(d.pct)}">${pctFmt(d.pct)}</td><td>${d.pe}</td><td>${d.mcap}</td><td><span class="tag ${d.sig}">${d.sigT}</span></td></tr>`;
+    }
+    html += '</tbody></table><div style="color:var(--muted);font-size:0.7rem;margin-top:0.5rem">Demo-Daten – Live-API nicht erreichbar</div>';
+    $('stocksTable').innerHTML = html;
+}
+
+function loadMacro() {
+    $('macroMetrics').innerHTML = `
+        <div class="metric"><div class="label">Fed Funds Rate</div><div class="value">4.25%</div><div class="sub">Letztes Meeting: Juni 2025</div></div>
+        <div class="metric"><div class="label">US CPI (YoY)</div><div class="value">2.8%</div><div class="sub">Trend: fallend</div></div>
+        <div class="metric"><div class="label">US 10Y Yield</div><div class="value">4.32%</div><div class="sub">Invertierte Zinskurve</div></div>
+        <div class="metric"><div class="label">EUR/USD</div><div class="value">1.088</div><div class="sub">Euro schwächer</div></div>
+        <div class="metric"><div class="label">VIX</div><div class="value neutral">16.4</div><div class="sub">Niedrige Volatilität</div></div>
+        <div class="metric"><div class="label">US BIP (Q1)</div><div class="value">2.4%</div><div class="sub">Annualisiert</div></div>
+        <div class="metric"><div class="label">Arbeitslosenquote</div><div class="value">3.9%</div><div class="sub">Leicht steigend</div></div>
+        <div class="metric"><div class="label">PMI Manufakt.</div><div class="value neutral">48.7</div><div class="sub">Unter Expansionsschwelle</div></div>
+    `;
+    const note = document.createElement('div');
+    note.style.cssText = 'color:var(--muted);font-size:0.7rem;margin-top:0.75rem';
+    note.textContent = 'Datenstand: Letzte verfügbare Werte. Für aktuelle Daten bitte "Aktualisieren" klicken oder Quellen wie FRED, ECB, BLS prüfen.';
+    $('macroMetrics').appendChild(note);
+}
+
+function loadSentiment() {
+    $('sentimentContent').innerHTML = `
+        <div class="metric-grid">
+            <div class="metric"><div class="label">Fear & Greed</div><div class="value pos">62</div><div class="sub">Gier</div></div>
+            <div class="metric"><div class="label">VIX</div><div class="value">16.4</div><div class="sub">Niedrig</div></div>
+            <div class="metric"><div class="label">Put/Call Ratio</div><div class="value">0.82</div><div class="sub">Leicht bullish</div></div>
+            <div class="metric"><div class="label">AAII Bullish</div><div class="value pos">42%</div><div class="sub">Über Durchschnitt</div></div>
+        </div>
+        <div style="margin-top:1rem;font-size:0.8rem;color:var(--muted)">
+            <strong style="color:var(--text)">Zusammenfassung:</strong> Das Marktsentiment ist aktuell leicht optimistisch. Der VIX deutet auf geringe erwartete Volatilität hin, während die AAII-Umfrage eine überdurchschnittliche Bullen-Quote zeigt. Die Put/Call-Ratio unterstützt das bullishe Bild.
+        </div>
+    `;
+}
+
+function loadNews() {
+    $('newsContent').innerHTML = `
+        <div class="news-item"><div class="source">Reuters | Heute</div><div class="headline">Fed signalisiert mögliche Zinssenkung im September – Markt reagiert positiv</div></div>
+        <div class="news-item"><div class="source">Bloomberg | Heute</div><div class="headline">NVIDIA übertrifft Erwartungen – Datacenter-Umsatz verdoppelt sich</div></div>
+        <div class="news-item"><div class="source">FT | Heute</div><div class="headline">EZB hält Leitzins stabil, signalisiert aber Offenheit für weitere Lockerung</div></div>
+        <div class="news-item"><div class="source">CNBC | Gestern</div><div class="headline">US-Arbeitsmarktdaten schwächer als erwartet – Rezessionsängste nehmen leicht zu</div></div>
+        <div class="news-item"><div class="source">Handelsblatt | Gestern</div><div class="headline">DAX erreicht neues Allzeithoch – Exportwerte profitieren von schwachem Euro</div></div>
+        <div class="news-item"><div class="source">WSJ | Gestern</div><div class="headline">Gold erreicht Rekordhoch über $2.700 – Zentralbanken kaufen weiter</div></div>
+        <div style="color:var(--muted);font-size:0.7rem;margin-top:0.75rem">Platzhalter-Headlines. Für aktuelle News bitte Reuters, Bloomberg oder Handelsblatt direkt konsultieren.</div>
+    `;
+}
+
+function loadScenarios() {
+    $('scenarioContent').innerHTML = `
+        <div class="scenario">
+            <h4 class="pos">Bull Case</h4>
+            <p>Fed senkt Zinsen 2-3x in 2025, Inflation normalisiert sich, KI-Investitionszyklus treibt Produktivitätsgewinne, globale Konjunktur erholt sich.</p>
+            <div class="prob pos">Einschätzung: S&P 500 bei 6.200+ zum Jahresende</div>
+        </div>
+        <div class="scenario">
+            <h4 class="neutral">Base Case</h4>
+            <p>Fed senkt 1-2x, Inflation bleibt leicht über Ziel, Wirtschaftswachstum verlangsamt sich moderat, Gewinne wachsen einstellig. Seitwärtsbewegung mit leichtem Aufwärtstrend.</p>
+            <div class="prob neutral">Einschätzung: S&P 500 bei 5.600-5.900</div>
+        </div>
+        <div class="scenario">
+            <h4 class="neg">Bear Case</h4>
+            <p>Inflation kehrt zurück, Zinsen bleiben hoch, geopolitische Eskalation (Taiwan, Nahost), Rezession in den USA, KI-Blase platzt.</p>
+            <div class="prob neg">Einschätzung: S&P 500 unter 4.800</div>
+        </div>
+    `;
+}
+
+// Tab handling
+document.addEventListener('click', e => {
+    if (e.target.classList.contains('tab')) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        e.target.classList.add('active');
+        $('stocksTable').innerHTML = '<div class="loading"><div class="spinner"></div>Laden...</div>';
+        loadStocks(e.target.dataset.tab);
+    }
+});
+
+// Search
+$('symbolSearch').addEventListener('keydown', async e => {
+    if (e.key === 'Enter') {
+        const sym = e.target.value.trim().toUpperCase();
+        if (!sym) return;
+        $('stocksTable').innerHTML = '<div class="loading"><div class="spinner"></div>Suche...</div>';
+        const quotes = await fetchQuotes([sym]);
+        if (quotes.length) {
+            const q = quotes[0];
+            let html = '<table><thead><tr><th>Symbol</th><th>Name</th><th>Kurs</th><th>% Tag</th><th>KGV</th><th>Marktk.</th><th>52W H</th><th>52W T</th><th>Div. Rendite</th></tr></thead><tbody>';
+            html += `<tr>
+                <td><strong>${q.symbol}</strong></td>
+                <td>${q.shortName || q.longName || '–'}</td>
+                <td>${fmt(q.regularMarketPrice)}</td>
+                <td class="${pctClass(q.regularMarketChangePercent)}">${pctFmt(q.regularMarketChangePercent)}</td>
+                <td>${q.trailingPE ? fmt(q.trailingPE, 1) : '–'}</td>
+                <td>${q.marketCap ? (q.marketCap / 1e9).toFixed(1) + ' Mrd' : '–'}</td>
+                <td>${fmt(q.fiftyTwoWeekHigh)}</td>
+                <td>${fmt(q.fiftyTwoWeekLow)}</td>
+                <td>${q.trailingAnnualDividendYield ? fmt(q.trailingAnnualDividendYield * 100, 2) + '%' : '–'}</td>
+            </tr>`;
+            html += '</tbody></table>';
+            $('stocksTable').innerHTML = html;
+        } else {
+            $('stocksTable').innerHTML = '<div style="color:var(--muted)">Symbol nicht gefunden oder API nicht erreichbar.</div>';
+        }
+    }
+});
+
+async function loadAllData() {
+    const btn = $('refreshBtn');
+    btn.disabled = true;
+    btn.textContent = 'Laden...';
+
+    loadMacro();
+    loadSentiment();
+    loadNews();
+    loadScenarios();
+
+    await Promise.allSettled([
+        loadIndices(),
+        loadAssets(),
+        loadSectors(),
+        loadStocks('momentum'),
+    ]);
+
+    const now = new Date();
+    $('lastUpdate').textContent = `Stand: ${now.toLocaleDateString('de-DE')} ${now.toLocaleTimeString('de-DE')}`;
+    btn.disabled = false;
+    btn.textContent = 'Aktualisieren';
+}
+
+loadAllData();
+</script>
+
+</body>
+</html>
