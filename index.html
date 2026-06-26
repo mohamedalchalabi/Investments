@@ -318,6 +318,105 @@
         .scenario p { font-size: 0.75rem; color: var(--muted); line-height: 1.4; }
         .scenario .prob { font-size: 0.7rem; font-weight: 600; margin-top: 0.35rem; }
 
+        /* Makro-Ampel-Sektion */
+        .macro-section { margin-bottom: 1.25rem; }
+        .macro-section:last-child { margin-bottom: 0; }
+        .macro-cat-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--muted);
+            margin-bottom: 0.6rem;
+            padding-left: 0.1rem;
+        }
+        .macro-cat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 0.75rem;
+        }
+        .macro-tile {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem 1.1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            transition: background 0.2s, border-color 0.2s;
+            border-left: 3px solid var(--border);
+        }
+        .macro-tile:hover { background: rgba(255,255,255,0.05); }
+        .macro-tile.status-green  { border-left-color: var(--green); }
+        .macro-tile.status-yellow { border-left-color: var(--yellow); }
+        .macro-tile.status-red    { border-left-color: var(--red); }
+
+        .macro-tile-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+        .macro-tile-name {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text);
+        }
+        .macro-tile-value {
+            font-size: 1.3rem;
+            font-weight: 700;
+            line-height: 1.2;
+            margin-top: 0.1rem;
+        }
+        .macro-tile-comment {
+            font-size: 0.75rem;
+            color: var(--muted);
+            line-height: 1.45;
+        }
+        .macro-tile-next {
+            font-size: 0.7rem;
+            color: var(--accent);
+            margin-top: 0.1rem;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.15rem 0.55rem;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .status-badge.green  { background: rgba(34,197,94,0.15); color: var(--green); }
+        .status-badge.yellow { background: rgba(234,179,8,0.15); color: var(--yellow); }
+        .status-badge.red    { background: rgba(239,68,68,0.15); color: var(--red); }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .status-badge.green .status-dot  { background: var(--green); }
+        .status-badge.yellow .status-dot { background: var(--yellow); }
+        .status-badge.red .status-dot    { background: var(--red); }
+
+        .macro-footer {
+            margin-top: 1rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            font-size: 0.65rem;
+            color: var(--muted);
+        }
+        .macro-footer a { color: var(--muted); text-decoration: none; }
+        .macro-footer a:hover { color: var(--text); text-decoration: underline; }
+
         .search-box {
             background: rgba(255,255,255,0.05);
             border: 1px solid var(--border);
@@ -358,29 +457,12 @@
 
 <div class="dashboard">
 
-    <!-- Makroökonomische Kennzahlen -->
-    <div class="card wide" id="macroCard">
+    <!-- Makro-Indikatoren (Ampel-System) -->
+    <div class="card full" id="macroAmpelCard">
         <div class="card-header">
-            <h2>Makroökonomische Indikatoren</h2>
-            <div class="card-header-actions">
-                <button class="toggle-all-btn" id="fredKeyBtn" onclick="toggleFredConfig()">FRED API-Key</button>
-                <button class="toggle-all-btn" id="toggleAllBtn" onclick="toggleAllIndicators()">Alle ausblenden</button>
-                <button class="refresh-card-btn" id="macroRefreshBtn" onclick="refreshMacro()">Aktualisieren</button>
-            </div>
+            <h2>Makro-Indikatoren</h2>
         </div>
-        <div id="fredConfigPanel" style="display:none;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.75rem;font-size:0.8rem;">
-            <div style="margin-bottom:0.5rem;color:var(--muted)">Alle Makro-Indikatoren werden über die FRED API geladen (Fed Funds, CPI, 10Y Yield, EUR/USD, VIX, BIP, Arbeitslosenquote, PMI). Ein kostenloser API-Key wird benötigt. <a href="https://fred.stlouisfed.org/docs/api/api_key.html" target="_blank" rel="noopener" style="color:var(--accent)">Hier kostenlos registrieren</a></div>
-            <div style="display:flex;gap:0.5rem;align-items:center">
-                <input type="text" id="fredKeyInput" class="search-box" style="width:300px;font-size:0.8rem" placeholder="FRED API Key eingeben...">
-                <button class="refresh-card-btn" onclick="saveFredKey()">Speichern</button>
-                <span id="fredKeyStatus" style="font-size:0.75rem;color:var(--muted)"></span>
-            </div>
-            <div style="margin-top:0.4rem;font-size:0.7rem;color:var(--muted)">Der Key wird lokal im Browser gespeichert (localStorage) und nicht an Dritte übermittelt.</div>
-        </div>
-        <div class="metric-grid" id="macroMetrics">
-            <div class="loading"><div class="spinner"></div>Laden...</div>
-        </div>
-        <div class="hidden-list" id="hiddenList"></div>
+        <div id="macroAmpelContent"></div>
     </div>
 
     <!-- Marktindizes -->
@@ -708,337 +790,124 @@ function renderDemoStocks() {
     $('stocksTable').innerHTML = html;
 }
 
-const MACRO_INDICATORS = [
-    {
-        id: 'fedfunds', label: 'Fed Funds Rate', value: '–', sub: 'Laden...', valueClass: '',
-        desc: 'Der Leitzins der US-Notenbank (Federal Reserve). Er beeinflusst die Kreditkosten in der gesamten Wirtschaft und ist das wichtigste geldpolitische Instrument. Steigende Zinsen bremsen die Wirtschaft und drücken tendenziell Aktienbewertungen, sinkende Zinsen wirken stimulierend.',
-        url: 'https://fred.stlouisfed.org/series/FEDFUNDS', source: 'FRED (Federal Reserve Bank of St. Louis)',
-        fredId: 'FEDFUNDS', suffix: '%', decimals: 2
-    },
-    {
-        id: 'cpi', label: 'US CPI (YoY)', value: '–', sub: 'Laden...', valueClass: '',
-        desc: 'Der Verbraucherpreisindex (Consumer Price Index) misst die Inflation – also wie stark die Preise für einen typischen Warenkorb im Jahresvergleich gestiegen sind. Die Fed strebt 2% an. Höhere Inflation kann zu Zinserhöhungen führen und belastet Anleihen und wachstumsstarke Aktien.',
-        url: 'https://www.bls.gov/cpi/', source: 'U.S. Bureau of Labor Statistics',
-        fredId: 'CPIAUCSL', suffix: '%', decimals: 1, yoy: true
-    },
-    {
-        id: 'us10y', label: 'US 10Y Yield', value: '–', sub: 'Laden...', valueClass: '',
-        desc: 'Die Rendite 10-jähriger US-Staatsanleihen gilt als Benchmark für langfristige Zinsen. Sie beeinflusst Hypothekenzinsen, Unternehmensfinanzierung und Aktienbewertungen. Eine invertierte Zinskurve (kurzfristige Zinsen höher als langfristige) gilt historisch als Rezessionsindikator.',
-        url: 'https://fred.stlouisfed.org/series/DGS10', source: 'FRED / U.S. Treasury',
-        fredId: 'DGS10', suffix: '%', decimals: 2
-    },
-    {
-        id: 'eurusd', label: 'EUR/USD', value: '–', sub: 'Laden...', valueClass: '',
-        desc: 'Der Wechselkurs Euro zu US-Dollar. Ein schwacher Euro verteuert Importe (z.B. Rohstoffe, die in Dollar gehandelt werden) und begünstigt europäische Exporteure. Für Euro-basierte Anleger beeinflusst er die Rendite von US-Investments.',
-        url: 'https://fred.stlouisfed.org/series/DEXUSEU', source: 'FRED / Federal Reserve',
-        fredId: 'DEXUSEU', suffix: '', decimals: 4
-    },
-    {
-        id: 'vix', label: 'VIX', value: '–', sub: 'Laden...', valueClass: '',
-        desc: 'Der CBOE Volatility Index misst die vom Markt erwartete Schwankungsbreite des S&P 500 für die nächsten 30 Tage. Werte unter 15 gelten als ruhig, 15–25 als normal, über 25 als erhöhte Angst. Er wird oft als "Angstbarometer" bezeichnet und steigt typischerweise bei Marktkorrekturen.',
-        url: 'https://fred.stlouisfed.org/series/VIXCLS', source: 'FRED / CBOE',
-        fredId: 'VIXCLS', suffix: '', decimals: 1
-    },
-    {
-        id: 'gdp', label: 'US BIP (Quartal)', value: '–', sub: 'Laden...', valueClass: '',
-        desc: 'Das Bruttoinlandsprodukt (GDP) misst den Gesamtwert aller in den USA produzierten Waren und Dienstleistungen. Die annualisierte Quartalsrate zeigt das Wirtschaftswachstum. Zwei aufeinanderfolgende Quartale mit negativem BIP gelten als technische Rezession.',
-        url: 'https://fred.stlouisfed.org/series/A191RL1Q225SBEA', source: 'FRED / Bureau of Economic Analysis',
-        fredId: 'A191RL1Q225SBEA', suffix: '%', decimals: 1
-    },
-    {
-        id: 'unrate', label: 'Arbeitslosenquote', value: '–', sub: 'Laden...', valueClass: '',
-        desc: 'Der Anteil der Erwerbspersonen ohne Beschäftigung. Ein starker Arbeitsmarkt stützt den Konsum und die Wirtschaft, kann aber auch inflationär wirken. Steigende Arbeitslosigkeit kann ein Frühindikator für eine Rezession sein und beeinflusst die Geldpolitik der Fed.',
-        url: 'https://fred.stlouisfed.org/series/UNRATE', source: 'FRED / Bureau of Labor Statistics',
-        fredId: 'UNRATE', suffix: '%', decimals: 1
-    },
-    {
-        id: 'pmi', label: 'ISM PMI Manufakt.', value: '–', sub: 'Laden...', valueClass: '',
-        desc: 'Der ISM Manufacturing PMI basiert auf Umfragen unter Einkaufsmanagern im verarbeitenden Gewerbe. Werte über 50 signalisieren Expansion, unter 50 Kontraktion. Er ist ein wichtiger Frühindikator für die wirtschaftliche Aktivität und reagiert oft schneller als harte Wirtschaftsdaten.',
-        url: 'https://fred.stlouisfed.org/series/NAPM', source: 'FRED / Institute for Supply Management',
-        fredId: 'NAPM', suffix: '', decimals: 1
-    },
-];
-
-function getFredApiKey() {
-    return localStorage.getItem('fred_api_key') || '';
-}
-
-function setFredApiKey(key) {
-    localStorage.setItem('fred_api_key', key.trim());
-}
-
-async function fetchFredSeries(seriesId, limit = 2) {
-    const key = getFredApiKey();
-    if (!key) return null;
-    const fredUrl = `https://api.stlouisfed.org/fred/series/observations?series_id=${seriesId}&api_key=${key}&file_type=json&sort_order=desc&limit=${limit}`;
-    try {
-        let res = await fetch(fredUrl);
-        if (!res.ok) {
-            res = await fetchWithProxy(fredUrl);
-        }
-        if (!res) return null;
-        const data = await res.json();
-        return data.observations || null;
-    } catch (e) {
-        try {
-            const res = await fetchWithProxy(fredUrl);
-            if (!res) return null;
-            const data = await res.json();
-            return data.observations || null;
-        } catch (e2) {
-            console.error('FRED fetch error:', seriesId, e2);
-            return null;
-        }
-    }
-}
-
-function formatDateDE(isoDate) {
-    if (!isoDate) return '';
-    const parts = isoDate.split('-');
-    if (parts.length !== 3) return isoDate;
-    return `${parts[2]}.${parts[1]}.${parts[0]}`;
-}
-
-function macroSubText(id, val, prev) {
-    if (val == null) return 'Nicht verfügbar';
-    switch (id) {
-        case 'vix':
-            if (val < 15) return 'Niedrige Volatilität';
-            if (val < 25) return 'Normale Volatilität';
-            return 'Hohe Volatilität';
-        case 'eurusd':
-            return val < 1.10 ? 'Euro schwächer' : val > 1.15 ? 'Euro stärker' : 'Neutral';
-        case 'pmi':
-            return val >= 50 ? 'Expansion' : 'Unter Expansionsschwelle';
-        default:
-            if (prev != null) {
-                const diff = val - prev;
-                return diff > 0 ? 'Trend: steigend' : diff < 0 ? 'Trend: fallend' : 'Unverändert';
-            }
-            return 'Aktueller Wert';
-    }
-}
-
-function macroValueClass(id, val) {
-    if (val == null) return '';
-    switch (id) {
-        case 'vix': return val < 15 ? 'pos' : val > 25 ? 'neg' : 'neutral';
-        case 'pmi': return val >= 50 ? 'pos' : 'neutral';
-        default: return '';
-    }
-}
-
-async function fetchMacroLive() {
-    const fredPromises = MACRO_INDICATORS.map(async ind => {
-        if (!ind.fredId) return { id: ind.id, obs: null };
-        const obs = await fetchFredSeries(ind.fredId, ind.yoy ? 13 : 2);
-        return { id: ind.id, obs };
-    });
-    const fredResults = await Promise.allSettled(fredPromises);
-    const fredMap = {};
-    for (const r of fredResults) {
-        if (r.status === 'fulfilled' && r.value.obs) {
-            fredMap[r.value.id] = r.value.obs;
-        }
-    }
-
-    for (const ind of MACRO_INDICATORS) {
-        let val = null, prev = null, dateNote = '';
-
-        if (ind.fredId && fredMap[ind.id]) {
-            const obs = fredMap[ind.id].filter(o => o.value !== '.');
-            if (ind.yoy && obs.length >= 13) {
-                const latest = parseFloat(obs[0].value);
-                const yearAgo = parseFloat(obs[12].value);
-                if (!isNaN(latest) && !isNaN(yearAgo) && yearAgo !== 0) {
-                    val = ((latest - yearAgo) / yearAgo) * 100;
-                    dateNote = formatDateDE(obs[0].date);
+/* ===== MAKRO-INDIKATOREN DATEN (separat, leicht aktualisierbar) ===== */
+const MACRO_DATA = {
+    datastand: '17.06.2026',
+    categories: [
+        {
+            name: 'Zinsen',
+            indicators: [
+                {
+                    name: 'Fed Funds Rate (USA)',
+                    value: '3,50–3,75 %',
+                    status: 'yellow',
+                    comment: '4. Pause in Folge (17.06.26). Dot Plot zeigt jetzt Richtung Erhöhung statt Senkung.',
+                    next: 'FOMC 28.–29.07.2026'
+                },
+                {
+                    name: 'EZB-Einlagesatz',
+                    value: '2,25 %',
+                    status: 'yellow',
+                    comment: 'Erhöhung um 0,25 Pp. am 11.06.26, erste seit Herbst 2023, wegen Energiepreisen.',
+                    next: 'EZB-Sitzung 23.07.2026'
                 }
-            } else if (obs.length >= 1) {
-                val = parseFloat(obs[0].value);
-                prev = obs.length >= 2 ? parseFloat(obs[1].value) : null;
-                dateNote = formatDateDE(obs[0].date);
-            }
+            ]
+        },
+        {
+            name: 'Inflation',
+            indicators: [
+                {
+                    name: 'USA CPI (Mai 2026)',
+                    value: '4,2 %',
+                    status: 'red',
+                    comment: 'Fed hebt PCE-Prognose 2026 von 2,7 % auf 3,6 % an.'
+                },
+                {
+                    name: 'Eurozone (Prognose 2026)',
+                    value: '3,0 %',
+                    status: 'yellow',
+                    comment: 'Über EZB-Ziel von 2 %, Kerninflation 2,5 %.'
+                }
+            ]
+        },
+        {
+            name: 'Wachstum',
+            indicators: [
+                {
+                    name: 'Eurozone BIP Q1 2026 (q/q)',
+                    value: '-0,2 %',
+                    status: 'red',
+                    comment: 'U.a. Einbruch irischer Pharma-Exporte.'
+                },
+                {
+                    name: 'Eurozone Wachstum (Prognose 2026)',
+                    value: '0,8 %',
+                    status: 'yellow',
+                    comment: 'Von EZB gesenkt, Energiepreise belasten Realeinkommen.'
+                }
+            ]
+        },
+        {
+            name: 'Geopolitik / Sonstiges',
+            indicators: [
+                {
+                    name: 'Naher Osten / Ölpreis',
+                    value: 'Erhöhte Unsicherheit',
+                    status: 'red',
+                    comment: 'Iran-Konflikt treibt Energiepreise, zentraler Inflationstreiber bei Fed & EZB.'
+                },
+                {
+                    name: 'Markterwartung Fed (Juli)',
+                    value: '78 % Pause',
+                    status: 'green',
+                    comment: 'CME FedWatch (Stand 17.06.26).'
+                }
+            ]
         }
+    ],
+    sources: [
+        { name: 'Federal Reserve', url: 'https://www.federalreserve.gov/' },
+        { name: 'EZB', url: 'https://www.ecb.europa.eu/' },
+        { name: 'Bundesbank', url: 'https://www.bundesbank.de/' },
+        { name: 'CME FedWatch', url: 'https://www.cmegroup.com/markets/interest-rates/cme-fedwatch-tool.html' },
+        { name: 'Reuters', url: 'https://www.reuters.com/' }
+    ]
+};
 
-        if (val != null && !isNaN(val)) {
-            ind.value = val.toFixed(ind.decimals) + ind.suffix;
-            ind.valueClass = macroValueClass(ind.id, val);
-            const trend = macroSubText(ind.id, val, prev);
-            ind.sub = `${trend}\nStand: ${dateNote}`;
-        } else if (!getFredApiKey()) {
-            ind.value = '–';
-            ind.sub = 'FRED API-Key eingeben';
-            ind.valueClass = '';
-        } else {
-            ind.value = '–';
-            ind.sub = 'Nicht verfügbar';
-            ind.valueClass = '';
+const STATUS_LABELS = { green: 'Positiv', yellow: 'Neutral', red: 'Negativ' };
+
+function renderMacroAmpel() {
+    const d = MACRO_DATA;
+    let html = '';
+
+    for (const cat of d.categories) {
+        html += `<div class="macro-section">
+            <div class="macro-cat-label">${cat.name}</div>
+            <div class="macro-cat-grid">`;
+        for (const ind of cat.indicators) {
+            html += `<div class="macro-tile status-${ind.status}">
+                <div class="macro-tile-header">
+                    <div class="macro-tile-name">${ind.name}</div>
+                    <span class="status-badge ${ind.status}"><span class="status-dot"></span>${STATUS_LABELS[ind.status]}</span>
+                </div>
+                <div class="macro-tile-value">${ind.value}</div>
+                <div class="macro-tile-comment">${ind.comment}</div>
+                ${ind.next ? `<div class="macro-tile-next">Nächster Termin: ${ind.next}</div>` : ''}
+            </div>`;
         }
+        html += `</div></div>`;
     }
+
+    html += `<div class="macro-footer">
+        <div>Beschreibende Einordnung, keine Anlageempfehlung. Datenstand: ${d.datastand}</div>
+        <div>Quellen: ${d.sources.map(s => `<a href="${s.url}" target="_blank" rel="noopener">${s.name}</a>`).join(' · ')}</div>
+    </div>`;
+
+    $('macroAmpelContent').innerHTML = html;
 }
 
-let macroOrder = MACRO_INDICATORS.map((_, i) => i);
-let hiddenIndicators = new Set();
-let dragSrcIndex = null;
-
-async function loadMacro() {
-    await fetchMacroLive();
-    renderMacroGrid();
-}
-
-function renderMacroGrid() {
-    let html = '';
-    for (const idx of macroOrder) {
-        const ind = MACRO_INDICATORS[idx];
-        const hidden = hiddenIndicators.has(idx);
-        html += `<div class="metric${hidden ? ' hidden-indicator' : ''}" data-idx="${idx}" draggable="true">
-            <div class="metric-toolbar">
-                <div class="toolbar-left">
-                    <button class="metric-action-btn drag-handle" title="Verschieben">&#9776;</button>
-                </div>
-                <div class="toolbar-right">
-                    <button class="metric-action-btn" title="Ausblenden" onclick="event.stopPropagation();hideIndicator(${idx})">&#10005;</button>
-                    <button class="metric-action-btn toggle-icon" title="Details" onclick="event.stopPropagation();toggleExpand(this)">&#9660;</button>
-                </div>
-            </div>
-            <div class="metric-main" onclick="toggleExpand(this.parentElement.querySelector('.toggle-icon'))">
-                <div class="label">${ind.label}</div>
-                <div class="value ${ind.valueClass}">${ind.value}</div>
-                <div class="sub">${ind.sub.split('\n').join('<br>')}</div>
-            </div>
-            <div class="details">
-                ${ind.desc}
-                <br><a href="${ind.url}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Quelle: ${ind.source} &#8599;</a>
-            </div>
-        </div>`;
-    }
-    $('macroMetrics').innerHTML = html;
-    renderHiddenList();
-    initDragAndDrop();
-    updateToggleAllBtn();
-}
-
-function toggleExpand(btn) {
-    const metric = btn.closest('.metric');
-    metric.classList.toggle('expanded');
-}
-
-function hideIndicator(idx) {
-    hiddenIndicators.add(idx);
-    const el = document.querySelector(`.metric[data-idx="${idx}"]`);
-    if (el) el.classList.add('hidden-indicator');
-    renderHiddenList();
-    updateToggleAllBtn();
-}
-
-function showIndicator(idx) {
-    hiddenIndicators.delete(idx);
-    const el = document.querySelector(`.metric[data-idx="${idx}"]`);
-    if (el) el.classList.remove('hidden-indicator');
-    renderHiddenList();
-    updateToggleAllBtn();
-}
-
-function toggleAllIndicators() {
-    const allHidden = hiddenIndicators.size === MACRO_INDICATORS.length;
-    if (allHidden) {
-        hiddenIndicators.clear();
-        document.querySelectorAll('.metric.hidden-indicator').forEach(el => el.classList.remove('hidden-indicator'));
-    } else {
-        MACRO_INDICATORS.forEach((_, i) => hiddenIndicators.add(i));
-        document.querySelectorAll('#macroMetrics .metric').forEach(el => el.classList.add('hidden-indicator'));
-    }
-    renderHiddenList();
-    updateToggleAllBtn();
-}
-
-function updateToggleAllBtn() {
-    const btn = $('toggleAllBtn');
-    btn.textContent = hiddenIndicators.size === MACRO_INDICATORS.length ? 'Alle einblenden' : 'Alle ausblenden';
-}
-
-function renderHiddenList() {
-    const container = $('hiddenList');
-    if (hiddenIndicators.size === 0) { container.innerHTML = ''; return; }
-    let html = '';
-    for (const idx of hiddenIndicators) {
-        html += `<div class="hidden-chip" onclick="showIndicator(${idx})">+ ${MACRO_INDICATORS[idx].label}</div>`;
-    }
-    container.innerHTML = html;
-}
-
-function toggleFredConfig() {
-    const panel = $('fredConfigPanel');
-    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-    const existing = getFredApiKey();
-    if (existing) {
-        $('fredKeyInput').value = existing;
-        $('fredKeyStatus').textContent = 'Key gespeichert';
-        $('fredKeyStatus').style.color = 'var(--green)';
-    }
-}
-
-async function saveFredKey() {
-    const key = $('fredKeyInput').value.trim();
-    if (!key) return;
-    setFredApiKey(key);
-    $('fredKeyStatus').textContent = 'Gespeichert! Lade Daten...';
-    $('fredKeyStatus').style.color = 'var(--green)';
-    await refreshMacro();
-    $('fredKeyStatus').textContent = 'Daten aktualisiert';
-}
-
-async function refreshMacro() {
-    const btn = $('macroRefreshBtn');
-    btn.disabled = true;
-    btn.classList.add('spinning');
-    btn.textContent = 'Laden...';
-    await fetchMacroLive();
-    renderMacroGrid();
-    btn.disabled = false;
-    btn.classList.remove('spinning');
-    btn.textContent = 'Aktualisieren';
-}
-
-function initDragAndDrop() {
-    const grid = $('macroMetrics');
-    const metrics = grid.querySelectorAll('.metric');
-
-    metrics.forEach(metric => {
-        metric.addEventListener('dragstart', e => {
-            dragSrcIndex = macroOrder.indexOf(parseInt(metric.dataset.idx));
-            metric.classList.add('dragging');
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', metric.dataset.idx);
-        });
-
-        metric.addEventListener('dragend', () => {
-            metric.classList.remove('dragging');
-            metrics.forEach(m => m.classList.remove('drag-over'));
-        });
-
-        metric.addEventListener('dragover', e => {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'move';
-            metric.classList.add('drag-over');
-        });
-
-        metric.addEventListener('dragleave', () => {
-            metric.classList.remove('drag-over');
-        });
-
-        metric.addEventListener('drop', e => {
-            e.preventDefault();
-            metric.classList.remove('drag-over');
-            const targetIndex = macroOrder.indexOf(parseInt(metric.dataset.idx));
-            if (dragSrcIndex !== null && dragSrcIndex !== targetIndex) {
-                const [moved] = macroOrder.splice(dragSrcIndex, 1);
-                macroOrder.splice(targetIndex, 0, moved);
-                renderMacroGrid();
-            }
-        });
-    });
+function loadMacro() {
+    renderMacroAmpel();
 }
 
 function loadSentiment() {
@@ -1131,12 +1000,12 @@ async function loadAllData() {
     btn.disabled = true;
     btn.textContent = 'Laden...';
 
+    loadMacro();
     loadSentiment();
     loadNews();
     loadScenarios();
 
     await Promise.allSettled([
-        loadMacro(),
         loadIndices(),
         loadAssets(),
         loadSectors(),
