@@ -96,11 +96,67 @@
             padding: 0.75rem;
             border-radius: 8px;
             text-align: center;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s;
+            border: 1px solid transparent;
+            position: relative;
         }
+        .metric:hover { background: rgba(255,255,255,0.06); border-color: var(--border); }
+        .metric.expanded { border-color: var(--accent); background: rgba(99,102,241,0.08); }
 
         .metric .label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; margin-bottom: 0.25rem; }
         .metric .value { font-size: 1.35rem; font-weight: 700; }
         .metric .sub { font-size: 0.7rem; color: var(--muted); margin-top: 0.15rem; }
+
+        .metric .toggle-icon {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            font-size: 0.65rem;
+            color: var(--muted);
+            transition: transform 0.2s;
+        }
+        .metric.expanded .toggle-icon { transform: rotate(180deg); }
+
+        .metric .details {
+            display: none;
+            text-align: left;
+            margin-top: 0.75rem;
+            padding-top: 0.65rem;
+            border-top: 1px solid var(--border);
+            font-size: 0.75rem;
+            color: var(--muted);
+            line-height: 1.5;
+        }
+        .metric.expanded .details { display: block; }
+        .metric .details a {
+            color: var(--accent);
+            text-decoration: none;
+            font-size: 0.7rem;
+            display: inline-block;
+            margin-top: 0.4rem;
+        }
+        .metric .details a:hover { text-decoration: underline; }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .card-header h2 { margin-bottom: 0; }
+        .refresh-card-btn {
+            background: rgba(99,102,241,0.15);
+            color: var(--accent);
+            border: 1px solid rgba(99,102,241,0.3);
+            padding: 0.3rem 0.7rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.7rem;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        .refresh-card-btn:hover { background: rgba(99,102,241,0.25); }
 
         .tag {
             display: inline-block;
@@ -226,7 +282,10 @@
 
     <!-- Makroökonomische Kennzahlen -->
     <div class="card wide" id="macroCard">
-        <h2>Makroökonomische Indikatoren</h2>
+        <div class="card-header">
+            <h2>Makroökonomische Indikatoren</h2>
+            <button class="refresh-card-btn" onclick="loadMacro()">Aktualisieren</button>
+        </div>
         <div class="metric-grid" id="macroMetrics">
             <div class="loading"><div class="spinner"></div>Laden...</div>
         </div>
@@ -535,21 +594,64 @@ function renderDemoStocks() {
     $('stocksTable').innerHTML = html;
 }
 
+const MACRO_INDICATORS = [
+    {
+        label: 'Fed Funds Rate', value: '4.25%', sub: 'Letztes Meeting: Juni 2025', valueClass: '',
+        desc: 'Der Leitzins der US-Notenbank (Federal Reserve). Er beeinflusst die Kreditkosten in der gesamten Wirtschaft und ist das wichtigste geldpolitische Instrument. Steigende Zinsen bremsen die Wirtschaft und drücken tendenziell Aktienbewertungen, sinkende Zinsen wirken stimulierend.',
+        url: 'https://fred.stlouisfed.org/series/FEDFUNDS', source: 'FRED (Federal Reserve Bank of St. Louis)'
+    },
+    {
+        label: 'US CPI (YoY)', value: '2.8%', sub: 'Trend: fallend', valueClass: '',
+        desc: 'Der Verbraucherpreisindex (Consumer Price Index) misst die Inflation – also wie stark die Preise für einen typischen Warenkorb im Jahresvergleich gestiegen sind. Die Fed strebt 2% an. Höhere Inflation kann zu Zinserhöhungen führen und belastet Anleihen und wachstumsstarke Aktien.',
+        url: 'https://www.bls.gov/cpi/', source: 'U.S. Bureau of Labor Statistics'
+    },
+    {
+        label: 'US 10Y Yield', value: '4.32%', sub: 'Invertierte Zinskurve', valueClass: '',
+        desc: 'Die Rendite 10-jähriger US-Staatsanleihen gilt als Benchmark für langfristige Zinsen. Sie beeinflusst Hypothekenzinsen, Unternehmensfinanzierung und Aktienbewertungen. Eine invertierte Zinskurve (kurzfristige Zinsen höher als langfristige) gilt historisch als Rezessionsindikator.',
+        url: 'https://fred.stlouisfed.org/series/DGS10', source: 'FRED / U.S. Treasury'
+    },
+    {
+        label: 'EUR/USD', value: '1.088', sub: 'Euro schwächer', valueClass: '',
+        desc: 'Der Wechselkurs Euro zu US-Dollar. Ein schwacher Euro verteuert Importe (z.B. Rohstoffe, die in Dollar gehandelt werden) und begünstigt europäische Exporteure. Für Euro-basierte Anleger beeinflusst er die Rendite von US-Investments.',
+        url: 'https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-usd.en.html', source: 'Europäische Zentralbank (EZB)'
+    },
+    {
+        label: 'VIX', value: '16.4', sub: 'Niedrige Volatilität', valueClass: 'neutral',
+        desc: 'Der CBOE Volatility Index misst die vom Markt erwartete Schwankungsbreite des S&P 500 für die nächsten 30 Tage. Werte unter 15 gelten als ruhig, 15–25 als normal, über 25 als erhöhte Angst. Er wird oft als "Angstbarometer" bezeichnet und steigt typischerweise bei Marktkorrekturen.',
+        url: 'https://www.cboe.com/tradable_products/vix/', source: 'CBOE Global Markets'
+    },
+    {
+        label: 'US BIP (Q1)', value: '2.4%', sub: 'Annualisiert', valueClass: '',
+        desc: 'Das Bruttoinlandsprodukt (GDP) misst den Gesamtwert aller in den USA produzierten Waren und Dienstleistungen. Die annualisierte Quartalsrate zeigt das Wirtschaftswachstum. Zwei aufeinanderfolgende Quartale mit negativem BIP gelten als technische Rezession.',
+        url: 'https://www.bea.gov/data/gdp/gross-domestic-product', source: 'U.S. Bureau of Economic Analysis (BEA)'
+    },
+    {
+        label: 'Arbeitslosenquote', value: '3.9%', sub: 'Leicht steigend', valueClass: '',
+        desc: 'Der Anteil der Erwerbspersonen ohne Beschäftigung. Ein starker Arbeitsmarkt stützt den Konsum und die Wirtschaft, kann aber auch inflationär wirken. Steigende Arbeitslosigkeit kann ein Frühindikator für eine Rezession sein und beeinflusst die Geldpolitik der Fed.',
+        url: 'https://fred.stlouisfed.org/series/UNRATE', source: 'FRED / Bureau of Labor Statistics'
+    },
+    {
+        label: 'PMI Manufakt.', value: '48.7', sub: 'Unter Expansionsschwelle', valueClass: 'neutral',
+        desc: 'Der Purchasing Managers\' Index für das verarbeitende Gewerbe basiert auf Umfragen unter Einkaufsmanagern. Werte über 50 signalisieren Expansion, unter 50 Kontraktion. Er ist ein wichtiger Frühindikator für die wirtschaftliche Aktivität und reagiert oft schneller als harte Wirtschaftsdaten.',
+        url: 'https://www.ismworld.org/supply-management-news-and-reports/reports/ism-report-on-business/', source: 'Institute for Supply Management (ISM)'
+    },
+];
+
 function loadMacro() {
-    $('macroMetrics').innerHTML = `
-        <div class="metric"><div class="label">Fed Funds Rate</div><div class="value">4.25%</div><div class="sub">Letztes Meeting: Juni 2025</div></div>
-        <div class="metric"><div class="label">US CPI (YoY)</div><div class="value">2.8%</div><div class="sub">Trend: fallend</div></div>
-        <div class="metric"><div class="label">US 10Y Yield</div><div class="value">4.32%</div><div class="sub">Invertierte Zinskurve</div></div>
-        <div class="metric"><div class="label">EUR/USD</div><div class="value">1.088</div><div class="sub">Euro schwächer</div></div>
-        <div class="metric"><div class="label">VIX</div><div class="value neutral">16.4</div><div class="sub">Niedrige Volatilität</div></div>
-        <div class="metric"><div class="label">US BIP (Q1)</div><div class="value">2.4%</div><div class="sub">Annualisiert</div></div>
-        <div class="metric"><div class="label">Arbeitslosenquote</div><div class="value">3.9%</div><div class="sub">Leicht steigend</div></div>
-        <div class="metric"><div class="label">PMI Manufakt.</div><div class="value neutral">48.7</div><div class="sub">Unter Expansionsschwelle</div></div>
-    `;
-    const note = document.createElement('div');
-    note.style.cssText = 'color:var(--muted);font-size:0.7rem;margin-top:0.75rem';
-    note.textContent = 'Datenstand: Letzte verfügbare Werte. Für aktuelle Daten bitte "Aktualisieren" klicken oder Quellen wie FRED, ECB, BLS prüfen.';
-    $('macroMetrics').appendChild(note);
+    let html = '';
+    for (const ind of MACRO_INDICATORS) {
+        html += `<div class="metric" onclick="this.classList.toggle('expanded')">
+            <div class="toggle-icon">&#9660;</div>
+            <div class="label">${ind.label}</div>
+            <div class="value ${ind.valueClass}">${ind.value}</div>
+            <div class="sub">${ind.sub}</div>
+            <div class="details">
+                ${ind.desc}
+                <br><a href="${ind.url}" target="_blank" rel="noopener">Quelle: ${ind.source} &#8599;</a>
+            </div>
+        </div>`;
+    }
+    $('macroMetrics').innerHTML = html;
 }
 
 function loadSentiment() {
