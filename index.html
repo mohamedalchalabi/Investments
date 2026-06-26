@@ -369,13 +369,13 @@
             </div>
         </div>
         <div id="fredConfigPanel" style="display:none;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.75rem;font-size:0.8rem;">
-            <div style="margin-bottom:0.5rem;color:var(--muted)">Für volkswirtschaftliche Daten (Fed Funds, CPI, BIP, Arbeitslosenquote) wird ein kostenloser FRED API-Key benötigt. <a href="https://fred.stlouisfed.org/docs/api/api_key.html" target="_blank" rel="noopener" style="color:var(--accent)">Hier kostenlos registrieren</a></div>
+            <div style="margin-bottom:0.5rem;color:var(--muted)">Alle Makro-Indikatoren werden über die FRED API geladen (Fed Funds, CPI, 10Y Yield, EUR/USD, VIX, BIP, Arbeitslosenquote, PMI). Ein kostenloser API-Key wird benötigt. <a href="https://fred.stlouisfed.org/docs/api/api_key.html" target="_blank" rel="noopener" style="color:var(--accent)">Hier kostenlos registrieren</a></div>
             <div style="display:flex;gap:0.5rem;align-items:center">
                 <input type="text" id="fredKeyInput" class="search-box" style="width:300px;font-size:0.8rem" placeholder="FRED API Key eingeben...">
                 <button class="refresh-card-btn" onclick="saveFredKey()">Speichern</button>
                 <span id="fredKeyStatus" style="font-size:0.75rem;color:var(--muted)"></span>
             </div>
-            <div style="margin-top:0.4rem;font-size:0.7rem;color:var(--muted)">Der Key wird lokal im Browser gespeichert (localStorage). Marktdaten (VIX, EUR/USD, 10Y Yield) werden immer live von Yahoo Finance geladen.</div>
+            <div style="margin-top:0.4rem;font-size:0.7rem;color:var(--muted)">Der Key wird lokal im Browser gespeichert (localStorage) und nicht an Dritte übermittelt.</div>
         </div>
         <div class="metric-grid" id="macroMetrics">
             <div class="loading"><div class="spinner"></div>Laden...</div>
@@ -725,24 +725,24 @@ const MACRO_INDICATORS = [
         id: 'us10y', label: 'US 10Y Yield', value: '–', sub: 'Laden...', valueClass: '',
         desc: 'Die Rendite 10-jähriger US-Staatsanleihen gilt als Benchmark für langfristige Zinsen. Sie beeinflusst Hypothekenzinsen, Unternehmensfinanzierung und Aktienbewertungen. Eine invertierte Zinskurve (kurzfristige Zinsen höher als langfristige) gilt historisch als Rezessionsindikator.',
         url: 'https://fred.stlouisfed.org/series/DGS10', source: 'FRED / U.S. Treasury',
-        yahooSymbol: '^TNX', suffix: '%', decimals: 2, divisor: 1
+        fredId: 'DGS10', suffix: '%', decimals: 2
     },
     {
         id: 'eurusd', label: 'EUR/USD', value: '–', sub: 'Laden...', valueClass: '',
         desc: 'Der Wechselkurs Euro zu US-Dollar. Ein schwacher Euro verteuert Importe (z.B. Rohstoffe, die in Dollar gehandelt werden) und begünstigt europäische Exporteure. Für Euro-basierte Anleger beeinflusst er die Rendite von US-Investments.',
-        url: 'https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-usd.en.html', source: 'Europäische Zentralbank (EZB)',
-        yahooSymbol: 'EURUSD=X', suffix: '', decimals: 3
+        url: 'https://fred.stlouisfed.org/series/DEXUSEU', source: 'FRED / Federal Reserve',
+        fredId: 'DEXUSEU', suffix: '', decimals: 4
     },
     {
         id: 'vix', label: 'VIX', value: '–', sub: 'Laden...', valueClass: '',
         desc: 'Der CBOE Volatility Index misst die vom Markt erwartete Schwankungsbreite des S&P 500 für die nächsten 30 Tage. Werte unter 15 gelten als ruhig, 15–25 als normal, über 25 als erhöhte Angst. Er wird oft als "Angstbarometer" bezeichnet und steigt typischerweise bei Marktkorrekturen.',
-        url: 'https://www.cboe.com/tradable_products/vix/', source: 'CBOE Global Markets',
-        yahooSymbol: '^VIX', suffix: '', decimals: 1
+        url: 'https://fred.stlouisfed.org/series/VIXCLS', source: 'FRED / CBOE',
+        fredId: 'VIXCLS', suffix: '', decimals: 1
     },
     {
         id: 'gdp', label: 'US BIP (Quartal)', value: '–', sub: 'Laden...', valueClass: '',
         desc: 'Das Bruttoinlandsprodukt (GDP) misst den Gesamtwert aller in den USA produzierten Waren und Dienstleistungen. Die annualisierte Quartalsrate zeigt das Wirtschaftswachstum. Zwei aufeinanderfolgende Quartale mit negativem BIP gelten als technische Rezession.',
-        url: 'https://www.bea.gov/data/gdp/gross-domestic-product', source: 'U.S. Bureau of Economic Analysis (BEA)',
+        url: 'https://fred.stlouisfed.org/series/A191RL1Q225SBEA', source: 'FRED / Bureau of Economic Analysis',
         fredId: 'A191RL1Q225SBEA', suffix: '%', decimals: 1
     },
     {
@@ -752,10 +752,10 @@ const MACRO_INDICATORS = [
         fredId: 'UNRATE', suffix: '%', decimals: 1
     },
     {
-        id: 'pmi', label: 'PMI Manufakt.', value: '–', sub: 'Laden...', valueClass: '',
-        desc: 'Der Purchasing Managers\' Index für das verarbeitende Gewerbe basiert auf Umfragen unter Einkaufsmanagern. Werte über 50 signalisieren Expansion, unter 50 Kontraktion. Er ist ein wichtiger Frühindikator für die wirtschaftliche Aktivität und reagiert oft schneller als harte Wirtschaftsdaten.',
-        url: 'https://www.ismworld.org/supply-management-news-and-reports/reports/ism-report-on-business/', source: 'Institute for Supply Management (ISM)',
-        fredId: 'MANEMP', suffix: '', decimals: 1, isPMI: true
+        id: 'pmi', label: 'ISM PMI Manufakt.', value: '–', sub: 'Laden...', valueClass: '',
+        desc: 'Der ISM Manufacturing PMI basiert auf Umfragen unter Einkaufsmanagern im verarbeitenden Gewerbe. Werte über 50 signalisieren Expansion, unter 50 Kontraktion. Er ist ein wichtiger Frühindikator für die wirtschaftliche Aktivität und reagiert oft schneller als harte Wirtschaftsdaten.',
+        url: 'https://fred.stlouisfed.org/series/NAPM', source: 'FRED / Institute for Supply Management',
+        fredId: 'NAPM', suffix: '', decimals: 1
     },
 ];
 
@@ -792,6 +792,13 @@ async function fetchFredSeries(seriesId, limit = 2) {
     }
 }
 
+function formatDateDE(isoDate) {
+    if (!isoDate) return '';
+    const parts = isoDate.split('-');
+    if (parts.length !== 3) return isoDate;
+    return `${parts[2]}.${parts[1]}.${parts[0]}`;
+}
+
 function macroSubText(id, val, prev) {
     if (val == null) return 'Nicht verfügbar';
     switch (id) {
@@ -802,10 +809,7 @@ function macroSubText(id, val, prev) {
         case 'eurusd':
             return val < 1.10 ? 'Euro schwächer' : val > 1.15 ? 'Euro stärker' : 'Neutral';
         case 'pmi':
-        case 'isPMI':
             return val >= 50 ? 'Expansion' : 'Unter Expansionsschwelle';
-        case 'us10y':
-            return 'Live-Kurs Yahoo Finance';
         default:
             if (prev != null) {
                 const diff = val - prev;
@@ -825,13 +829,8 @@ function macroValueClass(id, val) {
 }
 
 async function fetchMacroLive() {
-    const yahooSymbols = MACRO_INDICATORS.filter(i => i.yahooSymbol).map(i => i.yahooSymbol);
-    const [yahooQuotes] = await Promise.all([
-        fetchQuotes(yahooSymbols)
-    ]);
-    const yahooMap = Object.fromEntries((yahooQuotes || []).map(q => [q.symbol, q]));
-
-    const fredPromises = MACRO_INDICATORS.filter(i => i.fredId).map(async ind => {
+    const fredPromises = MACRO_INDICATORS.map(async ind => {
+        if (!ind.fredId) return { id: ind.id, obs: null };
         const obs = await fetchFredSeries(ind.fredId, ind.yoy ? 13 : 2);
         return { id: ind.id, obs };
     });
@@ -843,51 +842,37 @@ async function fetchMacroLive() {
         }
     }
 
-    const now = new Date();
-    const dateStr = now.toLocaleDateString('de-DE') + ' ' + now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-
     for (const ind of MACRO_INDICATORS) {
         let val = null, prev = null, dateNote = '';
 
-        if (ind.yahooSymbol) {
-            const q = yahooMap[ind.yahooSymbol];
-            if (q) {
-                val = q.regularMarketPrice / (ind.divisor || 1);
-                dateNote = `Live | ${dateStr}`;
-            }
-        }
-
         if (ind.fredId && fredMap[ind.id]) {
-            const obs = fredMap[ind.id];
+            const obs = fredMap[ind.id].filter(o => o.value !== '.');
             if (ind.yoy && obs.length >= 13) {
                 const latest = parseFloat(obs[0].value);
                 const yearAgo = parseFloat(obs[12].value);
                 if (!isNaN(latest) && !isNaN(yearAgo) && yearAgo !== 0) {
                     val = ((latest - yearAgo) / yearAgo) * 100;
-                    dateNote = `Berechnet YoY | Stand: ${obs[0].date}`;
+                    dateNote = formatDateDE(obs[0].date);
                 }
             } else if (obs.length >= 1) {
                 val = parseFloat(obs[0].value);
                 prev = obs.length >= 2 ? parseFloat(obs[1].value) : null;
-                dateNote = `Stand: ${obs[0].date}`;
+                dateNote = formatDateDE(obs[0].date);
             }
         }
 
         if (val != null && !isNaN(val)) {
             ind.value = val.toFixed(ind.decimals) + ind.suffix;
-            ind.sub = macroSubText(ind.id, val, prev) + (dateNote ? ` | ${dateNote}` : '');
             ind.valueClass = macroValueClass(ind.id, val);
-        } else if (ind.fredId && !getFredApiKey()) {
+            const trend = macroSubText(ind.id, val, prev);
+            ind.sub = `${trend}\nStand: ${dateNote}`;
+        } else if (!getFredApiKey()) {
             ind.value = '–';
             ind.sub = 'FRED API-Key eingeben';
             ind.valueClass = '';
-        } else if (ind.yahooSymbol) {
-            ind.value = '–';
-            ind.sub = 'Yahoo Finance nicht erreichbar';
-            ind.valueClass = '';
         } else {
             ind.value = '–';
-            ind.sub = 'API-Fehler – erneut versuchen';
+            ind.sub = 'Nicht verfügbar';
             ind.valueClass = '';
         }
     }
@@ -920,7 +905,7 @@ function renderMacroGrid() {
             <div class="metric-main" onclick="toggleExpand(this.parentElement.querySelector('.toggle-icon'))">
                 <div class="label">${ind.label}</div>
                 <div class="value ${ind.valueClass}">${ind.value}</div>
-                <div class="sub">${ind.sub}</div>
+                <div class="sub">${ind.sub.split('\n').join('<br>')}</div>
             </div>
             <div class="details">
                 ${ind.desc}
