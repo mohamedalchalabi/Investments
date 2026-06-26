@@ -447,8 +447,29 @@
 </div>
 
 <script>
-const API_BASE = 'https://query1.finance.yahoo.com/v8/finance';
-const CORS_PROXY = 'https://api.allorigins.win/raw?url=';
+const CORS_PROXIES = [
+    url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+    url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+];
+
+let workingProxy = null;
+
+async function fetchWithProxy(url) {
+    if (workingProxy !== null) {
+        try {
+            const res = await fetch(CORS_PROXIES[workingProxy](url));
+            if (res.ok) return res;
+        } catch (e) { workingProxy = null; }
+    }
+    for (let i = 0; i < CORS_PROXIES.length; i++) {
+        try {
+            const res = await fetch(CORS_PROXIES[i](url));
+            if (res.ok) { workingProxy = i; return res; }
+        } catch (e) { continue; }
+    }
+    return null;
+}
 
 function $(id) { return document.getElementById(id); }
 function fmt(n, d=2) { return n != null ? Number(n).toFixed(d) : '–'; }
@@ -495,13 +516,14 @@ const SCREEN_DIV = ['O', 'VZ', 'T', 'MO', 'PM', 'KO', 'PEP', 'XOM', 'ABBV', 'PFE
 
 async function fetchQuotes(symbols) {
     const syms = symbols.join(',');
-    const url = `${CORS_PROXY}${encodeURIComponent(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${syms}`)}`;
+    const yahooUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${syms}`;
     try {
-        const res = await fetch(url);
+        const res = await fetchWithProxy(yahooUrl);
+        if (!res) return [];
         const data = await res.json();
         return data.quoteResponse?.result || [];
     } catch (e) {
-        console.error('Fetch error:', e);
+        console.error('Yahoo fetch error:', e);
         return [];
     }
 }
@@ -748,14 +770,25 @@ function setFredApiKey(key) {
 async function fetchFredSeries(seriesId, limit = 2) {
     const key = getFredApiKey();
     if (!key) return null;
-    const url = `${CORS_PROXY}${encodeURIComponent(`https://api.stlouisfed.org/fred/series/observations?series_id=${seriesId}&api_key=${key}&file_type=json&sort_order=desc&limit=${limit}`)}`;
+    const fredUrl = `https://api.stlouisfed.org/fred/series/observations?series_id=${seriesId}&api_key=${key}&file_type=json&sort_order=desc&limit=${limit}`;
     try {
-        const res = await fetch(url);
+        let res = await fetch(fredUrl);
+        if (!res.ok) {
+            res = await fetchWithProxy(fredUrl);
+        }
+        if (!res) return null;
         const data = await res.json();
         return data.observations || null;
     } catch (e) {
-        console.error('FRED fetch error:', seriesId, e);
-        return null;
+        try {
+            const res = await fetchWithProxy(fredUrl);
+            if (!res) return null;
+            const data = await res.json();
+            return data.observations || null;
+        } catch (e2) {
+            console.error('FRED fetch error:', seriesId, e2);
+            return null;
+        }
     }
 }
 
@@ -844,12 +877,18 @@ async function fetchMacroLive() {
             ind.value = val.toFixed(ind.decimals) + ind.suffix;
             ind.sub = macroSubText(ind.id, val, prev) + (dateNote ? ` | ${dateNote}` : '');
             ind.valueClass = macroValueClass(ind.id, val);
-        } else if (!ind.yahooSymbol && !getFredApiKey()) {
+        } else if (ind.fredId && !getFredApiKey()) {
             ind.value = '–';
-            ind.sub = 'FRED API-Key benötigt';
+            ind.sub = 'FRED API-Key eingeben';
+            ind.valueClass = '';
+        } else if (ind.yahooSymbol) {
+            ind.value = '–';
+            ind.sub = 'Yahoo Finance nicht erreichbar';
+            ind.valueClass = '';
         } else {
             ind.value = '–';
-            ind.sub = 'Nicht verfügbar';
+            ind.sub = 'API-Fehler – erneut versuchen';
+            ind.valueClass = '';
         }
     }
 }
