@@ -96,24 +96,52 @@
             padding: 0.75rem;
             border-radius: 8px;
             text-align: center;
-            cursor: pointer;
-            transition: background 0.2s, border-color 0.2s;
+            transition: background 0.2s, border-color 0.2s, opacity 0.3s;
             border: 1px solid transparent;
             position: relative;
         }
         .metric:hover { background: rgba(255,255,255,0.06); border-color: var(--border); }
         .metric.expanded { border-color: var(--accent); background: rgba(99,102,241,0.08); }
+        .metric.hidden-indicator { display: none; }
+        .metric.dragging { opacity: 0.4; }
+        .metric.drag-over { border-color: var(--accent); border-style: dashed; }
+
+        .metric .metric-main { cursor: pointer; }
 
         .metric .label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; margin-bottom: 0.25rem; }
         .metric .value { font-size: 1.35rem; font-weight: 700; }
         .metric .sub { font-size: 0.7rem; color: var(--muted); margin-top: 0.15rem; }
 
-        .metric .toggle-icon {
+        .metric .metric-actions {
             position: absolute;
-            top: 0.5rem;
-            right: 0.5rem;
-            font-size: 0.65rem;
+            top: 0.4rem;
+            right: 0.4rem;
+            display: flex;
+            gap: 0.3rem;
+            align-items: center;
+        }
+
+        .metric-action-btn {
+            background: none;
+            border: none;
             color: var(--muted);
+            cursor: pointer;
+            font-size: 0.7rem;
+            padding: 0.15rem;
+            border-radius: 3px;
+            line-height: 1;
+            transition: color 0.15s, background 0.15s;
+        }
+        .metric-action-btn:hover { color: var(--text); background: rgba(255,255,255,0.1); }
+
+        .drag-handle {
+            cursor: grab;
+            font-size: 0.75rem;
+        }
+        .drag-handle:active { cursor: grabbing; }
+
+        .metric .toggle-icon {
+            font-size: 0.6rem;
             transition: transform 0.2s;
         }
         .metric.expanded .toggle-icon { transform: rotate(180deg); }
@@ -145,6 +173,13 @@
             margin-bottom: 1rem;
         }
         .card-header h2 { margin-bottom: 0; }
+
+        .card-header-actions {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
         .refresh-card-btn {
             background: rgba(99,102,241,0.15);
             color: var(--accent);
@@ -157,6 +192,43 @@
             transition: background 0.2s;
         }
         .refresh-card-btn:hover { background: rgba(99,102,241,0.25); }
+        .refresh-card-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .refresh-card-btn.spinning { animation: pulse 1s ease infinite; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        .toggle-all-btn {
+            background: rgba(255,255,255,0.05);
+            color: var(--muted);
+            border: 1px solid var(--border);
+            padding: 0.3rem 0.7rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.7rem;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        .toggle-all-btn:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+
+        .hidden-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+            margin-top: 0.75rem;
+        }
+        .hidden-chip {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 0.25rem 0.6rem;
+            font-size: 0.7rem;
+            color: var(--muted);
+            cursor: pointer;
+            transition: background 0.15s;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+        .hidden-chip:hover { background: rgba(99,102,241,0.15); color: var(--text); }
 
         .tag {
             display: inline-block;
@@ -284,11 +356,15 @@
     <div class="card wide" id="macroCard">
         <div class="card-header">
             <h2>Makroökonomische Indikatoren</h2>
-            <button class="refresh-card-btn" onclick="loadMacro()">Aktualisieren</button>
+            <div class="card-header-actions">
+                <button class="toggle-all-btn" id="toggleAllBtn" onclick="toggleAllIndicators()">Alle ausblenden</button>
+                <button class="refresh-card-btn" id="macroRefreshBtn" onclick="refreshMacro()">Aktualisieren</button>
+            </div>
         </div>
         <div class="metric-grid" id="macroMetrics">
             <div class="loading"><div class="spinner"></div>Laden...</div>
         </div>
+        <div class="hidden-list" id="hiddenList"></div>
     </div>
 
     <!-- Marktindizes -->
@@ -637,21 +713,142 @@ const MACRO_INDICATORS = [
     },
 ];
 
+let macroOrder = MACRO_INDICATORS.map((_, i) => i);
+let hiddenIndicators = new Set();
+let dragSrcIndex = null;
+
 function loadMacro() {
+    renderMacroGrid();
+}
+
+function renderMacroGrid() {
     let html = '';
-    for (const ind of MACRO_INDICATORS) {
-        html += `<div class="metric" onclick="this.classList.toggle('expanded')">
-            <div class="toggle-icon">&#9660;</div>
-            <div class="label">${ind.label}</div>
-            <div class="value ${ind.valueClass}">${ind.value}</div>
-            <div class="sub">${ind.sub}</div>
+    for (const idx of macroOrder) {
+        const ind = MACRO_INDICATORS[idx];
+        const hidden = hiddenIndicators.has(idx);
+        html += `<div class="metric${hidden ? ' hidden-indicator' : ''}" data-idx="${idx}" draggable="true">
+            <div class="metric-actions">
+                <button class="metric-action-btn drag-handle" title="Verschieben">&#9776;</button>
+                <button class="metric-action-btn" title="Ausblenden" onclick="event.stopPropagation();hideIndicator(${idx})">&#10005;</button>
+                <button class="metric-action-btn toggle-icon" title="Details" onclick="event.stopPropagation();toggleExpand(this)">&#9660;</button>
+            </div>
+            <div class="metric-main" onclick="toggleExpand(this.parentElement.querySelector('.toggle-icon'))">
+                <div class="label">${ind.label}</div>
+                <div class="value ${ind.valueClass}">${ind.value}</div>
+                <div class="sub">${ind.sub}</div>
+            </div>
             <div class="details">
                 ${ind.desc}
-                <br><a href="${ind.url}" target="_blank" rel="noopener">Quelle: ${ind.source} &#8599;</a>
+                <br><a href="${ind.url}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Quelle: ${ind.source} &#8599;</a>
             </div>
         </div>`;
     }
     $('macroMetrics').innerHTML = html;
+    renderHiddenList();
+    initDragAndDrop();
+    updateToggleAllBtn();
+}
+
+function toggleExpand(btn) {
+    const metric = btn.closest('.metric');
+    metric.classList.toggle('expanded');
+}
+
+function hideIndicator(idx) {
+    hiddenIndicators.add(idx);
+    const el = document.querySelector(`.metric[data-idx="${idx}"]`);
+    if (el) el.classList.add('hidden-indicator');
+    renderHiddenList();
+    updateToggleAllBtn();
+}
+
+function showIndicator(idx) {
+    hiddenIndicators.delete(idx);
+    const el = document.querySelector(`.metric[data-idx="${idx}"]`);
+    if (el) el.classList.remove('hidden-indicator');
+    renderHiddenList();
+    updateToggleAllBtn();
+}
+
+function toggleAllIndicators() {
+    const allHidden = hiddenIndicators.size === MACRO_INDICATORS.length;
+    if (allHidden) {
+        hiddenIndicators.clear();
+        document.querySelectorAll('.metric.hidden-indicator').forEach(el => el.classList.remove('hidden-indicator'));
+    } else {
+        MACRO_INDICATORS.forEach((_, i) => hiddenIndicators.add(i));
+        document.querySelectorAll('#macroMetrics .metric').forEach(el => el.classList.add('hidden-indicator'));
+    }
+    renderHiddenList();
+    updateToggleAllBtn();
+}
+
+function updateToggleAllBtn() {
+    const btn = $('toggleAllBtn');
+    btn.textContent = hiddenIndicators.size === MACRO_INDICATORS.length ? 'Alle einblenden' : 'Alle ausblenden';
+}
+
+function renderHiddenList() {
+    const container = $('hiddenList');
+    if (hiddenIndicators.size === 0) { container.innerHTML = ''; return; }
+    let html = '';
+    for (const idx of hiddenIndicators) {
+        html += `<div class="hidden-chip" onclick="showIndicator(${idx})">+ ${MACRO_INDICATORS[idx].label}</div>`;
+    }
+    container.innerHTML = html;
+}
+
+function refreshMacro() {
+    const btn = $('macroRefreshBtn');
+    btn.disabled = true;
+    btn.classList.add('spinning');
+    btn.textContent = 'Laden...';
+    setTimeout(() => {
+        renderMacroGrid();
+        btn.disabled = false;
+        btn.classList.remove('spinning');
+        btn.textContent = 'Aktualisieren';
+    }, 800);
+}
+
+function initDragAndDrop() {
+    const grid = $('macroMetrics');
+    const metrics = grid.querySelectorAll('.metric');
+
+    metrics.forEach(metric => {
+        metric.addEventListener('dragstart', e => {
+            dragSrcIndex = macroOrder.indexOf(parseInt(metric.dataset.idx));
+            metric.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', metric.dataset.idx);
+        });
+
+        metric.addEventListener('dragend', () => {
+            metric.classList.remove('dragging');
+            metrics.forEach(m => m.classList.remove('drag-over'));
+        });
+
+        metric.addEventListener('dragover', e => {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            metric.classList.add('drag-over');
+        });
+
+        metric.addEventListener('dragleave', () => {
+            metric.classList.remove('drag-over');
+        });
+
+        metric.addEventListener('drop', e => {
+            e.preventDefault();
+            metric.classList.remove('drag-over');
+            const targetIndex = macroOrder.indexOf(parseInt(metric.dataset.idx));
+            if (dragSrcIndex !== null && dragSrcIndex !== targetIndex) {
+                const [moved] = macroOrder.splice(dragSrcIndex, 1);
+                macroOrder.splice(targetIndex, 0, moved);
+                renderMacroGrid();
+            }
+        });
+    });
 }
 
 function loadSentiment() {
