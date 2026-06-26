@@ -87,18 +87,18 @@
 
         .metric-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
             gap: 0.75rem;
         }
 
         .metric {
             background: rgba(255,255,255,0.03);
-            padding: 0.75rem;
             border-radius: 8px;
             text-align: center;
             transition: background 0.2s, border-color 0.2s, opacity 0.3s;
             border: 1px solid transparent;
-            position: relative;
+            display: flex;
+            flex-direction: column;
         }
         .metric:hover { background: rgba(255,255,255,0.06); border-color: var(--border); }
         .metric.expanded { border-color: var(--accent); background: rgba(99,102,241,0.08); }
@@ -106,28 +106,34 @@
         .metric.dragging { opacity: 0.4; }
         .metric.drag-over { border-color: var(--accent); border-style: dashed; }
 
-        .metric .metric-main { cursor: pointer; }
-
-        .metric .label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; margin-bottom: 0.25rem; }
-        .metric .value { font-size: 1.35rem; font-weight: 700; }
-        .metric .sub { font-size: 0.7rem; color: var(--muted); margin-top: 0.15rem; }
-
-        .metric .metric-actions {
-            position: absolute;
-            top: 0.4rem;
-            right: 0.4rem;
+        .metric .metric-toolbar {
             display: flex;
-            gap: 0.3rem;
+            justify-content: space-between;
             align-items: center;
+            padding: 0.35rem 0.5rem;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            min-height: 1.6rem;
+            opacity: 0.4;
+            transition: opacity 0.2s;
         }
+        .metric:hover .metric-toolbar { opacity: 1; }
+
+        .metric .metric-toolbar .toolbar-left { display: flex; align-items: center; }
+        .metric .metric-toolbar .toolbar-right { display: flex; gap: 0.2rem; align-items: center; }
+
+        .metric .metric-main { cursor: pointer; padding: 0.75rem 0.75rem 0.85rem; flex: 1; }
+
+        .metric .label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; margin-bottom: 0.35rem; letter-spacing: 0.03em; }
+        .metric .value { font-size: 1.4rem; font-weight: 700; line-height: 1.2; }
+        .metric .sub { font-size: 0.7rem; color: var(--muted); margin-top: 0.25rem; }
 
         .metric-action-btn {
             background: none;
             border: none;
             color: var(--muted);
             cursor: pointer;
-            font-size: 0.7rem;
-            padding: 0.15rem;
+            font-size: 0.65rem;
+            padding: 0.2rem 0.3rem;
             border-radius: 3px;
             line-height: 1;
             transition: color 0.15s, background 0.15s;
@@ -136,12 +142,12 @@
 
         .drag-handle {
             cursor: grab;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
         }
         .drag-handle:active { cursor: grabbing; }
 
         .metric .toggle-icon {
-            font-size: 0.6rem;
+            font-size: 0.55rem;
             transition: transform 0.2s;
         }
         .metric.expanded .toggle-icon { transform: rotate(180deg); }
@@ -727,10 +733,14 @@ function renderMacroGrid() {
         const ind = MACRO_INDICATORS[idx];
         const hidden = hiddenIndicators.has(idx);
         html += `<div class="metric${hidden ? ' hidden-indicator' : ''}" data-idx="${idx}" draggable="true">
-            <div class="metric-actions">
-                <button class="metric-action-btn drag-handle" title="Verschieben">&#9776;</button>
-                <button class="metric-action-btn" title="Ausblenden" onclick="event.stopPropagation();hideIndicator(${idx})">&#10005;</button>
-                <button class="metric-action-btn toggle-icon" title="Details" onclick="event.stopPropagation();toggleExpand(this)">&#9660;</button>
+            <div class="metric-toolbar">
+                <div class="toolbar-left">
+                    <button class="metric-action-btn drag-handle" title="Verschieben">&#9776;</button>
+                </div>
+                <div class="toolbar-right">
+                    <button class="metric-action-btn" title="Ausblenden" onclick="event.stopPropagation();hideIndicator(${idx})">&#10005;</button>
+                    <button class="metric-action-btn toggle-icon" title="Details" onclick="event.stopPropagation();toggleExpand(this)">&#9660;</button>
+                </div>
             </div>
             <div class="metric-main" onclick="toggleExpand(this.parentElement.querySelector('.toggle-icon'))">
                 <div class="label">${ind.label}</div>
