@@ -363,9 +363,19 @@
         <div class="card-header">
             <h2>Makroökonomische Indikatoren</h2>
             <div class="card-header-actions">
+                <button class="toggle-all-btn" id="fredKeyBtn" onclick="toggleFredConfig()">FRED API-Key</button>
                 <button class="toggle-all-btn" id="toggleAllBtn" onclick="toggleAllIndicators()">Alle ausblenden</button>
                 <button class="refresh-card-btn" id="macroRefreshBtn" onclick="refreshMacro()">Aktualisieren</button>
             </div>
+        </div>
+        <div id="fredConfigPanel" style="display:none;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.75rem;font-size:0.8rem;">
+            <div style="margin-bottom:0.5rem;color:var(--muted)">Für volkswirtschaftliche Daten (Fed Funds, CPI, BIP, Arbeitslosenquote) wird ein kostenloser FRED API-Key benötigt. <a href="https://fred.stlouisfed.org/docs/api/api_key.html" target="_blank" rel="noopener" style="color:var(--accent)">Hier kostenlos registrieren</a></div>
+            <div style="display:flex;gap:0.5rem;align-items:center">
+                <input type="text" id="fredKeyInput" class="search-box" style="width:300px;font-size:0.8rem" placeholder="FRED API Key eingeben...">
+                <button class="refresh-card-btn" onclick="saveFredKey()">Speichern</button>
+                <span id="fredKeyStatus" style="font-size:0.75rem;color:var(--muted)"></span>
+            </div>
+            <div style="margin-top:0.4rem;font-size:0.7rem;color:var(--muted)">Der Key wird lokal im Browser gespeichert (localStorage). Marktdaten (VIX, EUR/USD, 10Y Yield) werden immer live von Yahoo Finance geladen.</div>
         </div>
         <div class="metric-grid" id="macroMetrics">
             <div class="loading"><div class="spinner"></div>Laden...</div>
@@ -678,52 +688,178 @@ function renderDemoStocks() {
 
 const MACRO_INDICATORS = [
     {
-        label: 'Fed Funds Rate', value: '4.25%', sub: 'Letztes Meeting: Juni 2025', valueClass: '',
+        id: 'fedfunds', label: 'Fed Funds Rate', value: '–', sub: 'Laden...', valueClass: '',
         desc: 'Der Leitzins der US-Notenbank (Federal Reserve). Er beeinflusst die Kreditkosten in der gesamten Wirtschaft und ist das wichtigste geldpolitische Instrument. Steigende Zinsen bremsen die Wirtschaft und drücken tendenziell Aktienbewertungen, sinkende Zinsen wirken stimulierend.',
-        url: 'https://fred.stlouisfed.org/series/FEDFUNDS', source: 'FRED (Federal Reserve Bank of St. Louis)'
+        url: 'https://fred.stlouisfed.org/series/FEDFUNDS', source: 'FRED (Federal Reserve Bank of St. Louis)',
+        fredId: 'FEDFUNDS', suffix: '%', decimals: 2
     },
     {
-        label: 'US CPI (YoY)', value: '2.8%', sub: 'Trend: fallend', valueClass: '',
+        id: 'cpi', label: 'US CPI (YoY)', value: '–', sub: 'Laden...', valueClass: '',
         desc: 'Der Verbraucherpreisindex (Consumer Price Index) misst die Inflation – also wie stark die Preise für einen typischen Warenkorb im Jahresvergleich gestiegen sind. Die Fed strebt 2% an. Höhere Inflation kann zu Zinserhöhungen führen und belastet Anleihen und wachstumsstarke Aktien.',
-        url: 'https://www.bls.gov/cpi/', source: 'U.S. Bureau of Labor Statistics'
+        url: 'https://www.bls.gov/cpi/', source: 'U.S. Bureau of Labor Statistics',
+        fredId: 'CPIAUCSL', suffix: '%', decimals: 1, yoy: true
     },
     {
-        label: 'US 10Y Yield', value: '4.32%', sub: 'Invertierte Zinskurve', valueClass: '',
+        id: 'us10y', label: 'US 10Y Yield', value: '–', sub: 'Laden...', valueClass: '',
         desc: 'Die Rendite 10-jähriger US-Staatsanleihen gilt als Benchmark für langfristige Zinsen. Sie beeinflusst Hypothekenzinsen, Unternehmensfinanzierung und Aktienbewertungen. Eine invertierte Zinskurve (kurzfristige Zinsen höher als langfristige) gilt historisch als Rezessionsindikator.',
-        url: 'https://fred.stlouisfed.org/series/DGS10', source: 'FRED / U.S. Treasury'
+        url: 'https://fred.stlouisfed.org/series/DGS10', source: 'FRED / U.S. Treasury',
+        yahooSymbol: '^TNX', suffix: '%', decimals: 2, divisor: 1
     },
     {
-        label: 'EUR/USD', value: '1.088', sub: 'Euro schwächer', valueClass: '',
+        id: 'eurusd', label: 'EUR/USD', value: '–', sub: 'Laden...', valueClass: '',
         desc: 'Der Wechselkurs Euro zu US-Dollar. Ein schwacher Euro verteuert Importe (z.B. Rohstoffe, die in Dollar gehandelt werden) und begünstigt europäische Exporteure. Für Euro-basierte Anleger beeinflusst er die Rendite von US-Investments.',
-        url: 'https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-usd.en.html', source: 'Europäische Zentralbank (EZB)'
+        url: 'https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/eurofxref-graph-usd.en.html', source: 'Europäische Zentralbank (EZB)',
+        yahooSymbol: 'EURUSD=X', suffix: '', decimals: 3
     },
     {
-        label: 'VIX', value: '16.4', sub: 'Niedrige Volatilität', valueClass: 'neutral',
+        id: 'vix', label: 'VIX', value: '–', sub: 'Laden...', valueClass: '',
         desc: 'Der CBOE Volatility Index misst die vom Markt erwartete Schwankungsbreite des S&P 500 für die nächsten 30 Tage. Werte unter 15 gelten als ruhig, 15–25 als normal, über 25 als erhöhte Angst. Er wird oft als "Angstbarometer" bezeichnet und steigt typischerweise bei Marktkorrekturen.',
-        url: 'https://www.cboe.com/tradable_products/vix/', source: 'CBOE Global Markets'
+        url: 'https://www.cboe.com/tradable_products/vix/', source: 'CBOE Global Markets',
+        yahooSymbol: '^VIX', suffix: '', decimals: 1
     },
     {
-        label: 'US BIP (Q1)', value: '2.4%', sub: 'Annualisiert', valueClass: '',
+        id: 'gdp', label: 'US BIP (Quartal)', value: '–', sub: 'Laden...', valueClass: '',
         desc: 'Das Bruttoinlandsprodukt (GDP) misst den Gesamtwert aller in den USA produzierten Waren und Dienstleistungen. Die annualisierte Quartalsrate zeigt das Wirtschaftswachstum. Zwei aufeinanderfolgende Quartale mit negativem BIP gelten als technische Rezession.',
-        url: 'https://www.bea.gov/data/gdp/gross-domestic-product', source: 'U.S. Bureau of Economic Analysis (BEA)'
+        url: 'https://www.bea.gov/data/gdp/gross-domestic-product', source: 'U.S. Bureau of Economic Analysis (BEA)',
+        fredId: 'A191RL1Q225SBEA', suffix: '%', decimals: 1
     },
     {
-        label: 'Arbeitslosenquote', value: '3.9%', sub: 'Leicht steigend', valueClass: '',
+        id: 'unrate', label: 'Arbeitslosenquote', value: '–', sub: 'Laden...', valueClass: '',
         desc: 'Der Anteil der Erwerbspersonen ohne Beschäftigung. Ein starker Arbeitsmarkt stützt den Konsum und die Wirtschaft, kann aber auch inflationär wirken. Steigende Arbeitslosigkeit kann ein Frühindikator für eine Rezession sein und beeinflusst die Geldpolitik der Fed.',
-        url: 'https://fred.stlouisfed.org/series/UNRATE', source: 'FRED / Bureau of Labor Statistics'
+        url: 'https://fred.stlouisfed.org/series/UNRATE', source: 'FRED / Bureau of Labor Statistics',
+        fredId: 'UNRATE', suffix: '%', decimals: 1
     },
     {
-        label: 'PMI Manufakt.', value: '48.7', sub: 'Unter Expansionsschwelle', valueClass: 'neutral',
+        id: 'pmi', label: 'PMI Manufakt.', value: '–', sub: 'Laden...', valueClass: '',
         desc: 'Der Purchasing Managers\' Index für das verarbeitende Gewerbe basiert auf Umfragen unter Einkaufsmanagern. Werte über 50 signalisieren Expansion, unter 50 Kontraktion. Er ist ein wichtiger Frühindikator für die wirtschaftliche Aktivität und reagiert oft schneller als harte Wirtschaftsdaten.',
-        url: 'https://www.ismworld.org/supply-management-news-and-reports/reports/ism-report-on-business/', source: 'Institute for Supply Management (ISM)'
+        url: 'https://www.ismworld.org/supply-management-news-and-reports/reports/ism-report-on-business/', source: 'Institute for Supply Management (ISM)',
+        fredId: 'MANEMP', suffix: '', decimals: 1, isPMI: true
     },
 ];
+
+function getFredApiKey() {
+    return localStorage.getItem('fred_api_key') || '';
+}
+
+function setFredApiKey(key) {
+    localStorage.setItem('fred_api_key', key.trim());
+}
+
+async function fetchFredSeries(seriesId, limit = 2) {
+    const key = getFredApiKey();
+    if (!key) return null;
+    const url = `${CORS_PROXY}${encodeURIComponent(`https://api.stlouisfed.org/fred/series/observations?series_id=${seriesId}&api_key=${key}&file_type=json&sort_order=desc&limit=${limit}`)}`;
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
+        return data.observations || null;
+    } catch (e) {
+        console.error('FRED fetch error:', seriesId, e);
+        return null;
+    }
+}
+
+function macroSubText(id, val, prev) {
+    if (val == null) return 'Nicht verfügbar';
+    switch (id) {
+        case 'vix':
+            if (val < 15) return 'Niedrige Volatilität';
+            if (val < 25) return 'Normale Volatilität';
+            return 'Hohe Volatilität';
+        case 'eurusd':
+            return val < 1.10 ? 'Euro schwächer' : val > 1.15 ? 'Euro stärker' : 'Neutral';
+        case 'pmi':
+        case 'isPMI':
+            return val >= 50 ? 'Expansion' : 'Unter Expansionsschwelle';
+        case 'us10y':
+            return 'Live-Kurs Yahoo Finance';
+        default:
+            if (prev != null) {
+                const diff = val - prev;
+                return diff > 0 ? 'Trend: steigend' : diff < 0 ? 'Trend: fallend' : 'Unverändert';
+            }
+            return 'Aktueller Wert';
+    }
+}
+
+function macroValueClass(id, val) {
+    if (val == null) return '';
+    switch (id) {
+        case 'vix': return val < 15 ? 'pos' : val > 25 ? 'neg' : 'neutral';
+        case 'pmi': return val >= 50 ? 'pos' : 'neutral';
+        default: return '';
+    }
+}
+
+async function fetchMacroLive() {
+    const yahooSymbols = MACRO_INDICATORS.filter(i => i.yahooSymbol).map(i => i.yahooSymbol);
+    const [yahooQuotes] = await Promise.all([
+        fetchQuotes(yahooSymbols)
+    ]);
+    const yahooMap = Object.fromEntries((yahooQuotes || []).map(q => [q.symbol, q]));
+
+    const fredPromises = MACRO_INDICATORS.filter(i => i.fredId).map(async ind => {
+        const obs = await fetchFredSeries(ind.fredId, ind.yoy ? 13 : 2);
+        return { id: ind.id, obs };
+    });
+    const fredResults = await Promise.allSettled(fredPromises);
+    const fredMap = {};
+    for (const r of fredResults) {
+        if (r.status === 'fulfilled' && r.value.obs) {
+            fredMap[r.value.id] = r.value.obs;
+        }
+    }
+
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('de-DE') + ' ' + now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+
+    for (const ind of MACRO_INDICATORS) {
+        let val = null, prev = null, dateNote = '';
+
+        if (ind.yahooSymbol) {
+            const q = yahooMap[ind.yahooSymbol];
+            if (q) {
+                val = q.regularMarketPrice / (ind.divisor || 1);
+                dateNote = `Live | ${dateStr}`;
+            }
+        }
+
+        if (ind.fredId && fredMap[ind.id]) {
+            const obs = fredMap[ind.id];
+            if (ind.yoy && obs.length >= 13) {
+                const latest = parseFloat(obs[0].value);
+                const yearAgo = parseFloat(obs[12].value);
+                if (!isNaN(latest) && !isNaN(yearAgo) && yearAgo !== 0) {
+                    val = ((latest - yearAgo) / yearAgo) * 100;
+                    dateNote = `Berechnet YoY | Stand: ${obs[0].date}`;
+                }
+            } else if (obs.length >= 1) {
+                val = parseFloat(obs[0].value);
+                prev = obs.length >= 2 ? parseFloat(obs[1].value) : null;
+                dateNote = `Stand: ${obs[0].date}`;
+            }
+        }
+
+        if (val != null && !isNaN(val)) {
+            ind.value = val.toFixed(ind.decimals) + ind.suffix;
+            ind.sub = macroSubText(ind.id, val, prev) + (dateNote ? ` | ${dateNote}` : '');
+            ind.valueClass = macroValueClass(ind.id, val);
+        } else if (!ind.yahooSymbol && !getFredApiKey()) {
+            ind.value = '–';
+            ind.sub = 'FRED API-Key benötigt';
+        } else {
+            ind.value = '–';
+            ind.sub = 'Nicht verfügbar';
+        }
+    }
+}
 
 let macroOrder = MACRO_INDICATORS.map((_, i) => i);
 let hiddenIndicators = new Set();
 let dragSrcIndex = null;
 
-function loadMacro() {
+async function loadMacro() {
+    await fetchMacroLive();
     renderMacroGrid();
 }
 
@@ -808,17 +944,37 @@ function renderHiddenList() {
     container.innerHTML = html;
 }
 
-function refreshMacro() {
+function toggleFredConfig() {
+    const panel = $('fredConfigPanel');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    const existing = getFredApiKey();
+    if (existing) {
+        $('fredKeyInput').value = existing;
+        $('fredKeyStatus').textContent = 'Key gespeichert';
+        $('fredKeyStatus').style.color = 'var(--green)';
+    }
+}
+
+async function saveFredKey() {
+    const key = $('fredKeyInput').value.trim();
+    if (!key) return;
+    setFredApiKey(key);
+    $('fredKeyStatus').textContent = 'Gespeichert! Lade Daten...';
+    $('fredKeyStatus').style.color = 'var(--green)';
+    await refreshMacro();
+    $('fredKeyStatus').textContent = 'Daten aktualisiert';
+}
+
+async function refreshMacro() {
     const btn = $('macroRefreshBtn');
     btn.disabled = true;
     btn.classList.add('spinning');
     btn.textContent = 'Laden...';
-    setTimeout(() => {
-        renderMacroGrid();
-        btn.disabled = false;
-        btn.classList.remove('spinning');
-        btn.textContent = 'Aktualisieren';
-    }, 800);
+    await fetchMacroLive();
+    renderMacroGrid();
+    btn.disabled = false;
+    btn.classList.remove('spinning');
+    btn.textContent = 'Aktualisieren';
 }
 
 function initDragAndDrop() {
@@ -951,12 +1107,12 @@ async function loadAllData() {
     btn.disabled = true;
     btn.textContent = 'Laden...';
 
-    loadMacro();
     loadSentiment();
     loadNews();
     loadScenarios();
 
     await Promise.allSettled([
+        loadMacro(),
         loadIndices(),
         loadAssets(),
         loadSectors(),
