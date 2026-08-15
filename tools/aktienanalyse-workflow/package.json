@@ -1,0 +1,14 @@
+{
+  "name": "aktienanalyse-workflow",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Recherchebasierter Multi-Perspektiven Aktienanalyse-Workflow (Bigdata.com + Anthropic API)",
+  "main": "src/index.mjs",
+  "scripts": {
+    "start": "node src/index.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.117.1",
+    "dotenv": "^16.4.5"
+  }
+}
